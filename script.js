@@ -1,8 +1,9 @@
 const deck = [
-  "as","2s","3s","4s","5s","6s","7s","8s","9s","xs","js","qs","ks",
-  "ac","2c","3c","4c","5c","6c","7c","8c","9c","xc","jc","qc","kc",
-  "ad","2d","3d","4d","5d","6d","7d","8d","9d","xd","jd","qd","kd",
-  "ah","2h","3h","4h","5h","6h","7h","8h","9h","xh","jh","qh","kh"
+  "as","5h","9s","2s","qh","3d","qc","8h","6s","5s","9h","kc",
+  "2d","jh","3s","8s","6h","xc","5d","kd","2c","3h","8d","5c",
+  "ks","jd","8c","xs","kh","jc","7s","xh","ad","4s","7h","4d",
+  "ac","9c","js","qd","7d","qs","xd","6c","ah","9d","4c","2h",
+  "7d","3c","4h","6d"
 ];
 
 const cardImg = document.getElementById("card");
@@ -77,3 +78,4 @@ function startDeck() {
 
 document.body.addEventListener("click", startDeck);
 document.body.addEventListener("touchstart", startDeck);
+
