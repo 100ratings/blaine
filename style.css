@@ -11,7 +11,6 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  perspective: 1400px; /* profundidade para rotação frontal */
 }
 
 #stage {
@@ -34,12 +33,7 @@ body {
   height: 100%;
   object-fit: cover;
   border-radius: 14px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.75);
-
-  transform-origin: center center;
-  transform: rotateY(90deg);
-
-  transition:
-    transform 0.24s cubic-bezier(.22,.61,.36,1),
-    opacity 0.12s linear;
+  box-shadow: 0 18px 45px rgba(0,0,0,0.75);
+  transform: translateY(-6px);
+  transition: transform 0.08s linear, opacity 0.12s linear;
 }

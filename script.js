@@ -10,25 +10,30 @@ const deck = [
   "7c","3c","4h","6d"
 ];
 
+// ===============================
 const cardImg = document.getElementById("card");
 
+// ===============================
 let forcedCard = "qh";
 
-const SPEED_START = 90;
-const SPEED_FORCE = 520;
-const SPEED_END   = 38;
+const SPEED_START = 60;
+const SPEED_FORCE = 420;
+const SPEED_END   = 30;
 
+// ===============================
 let sequence = [];
 let index = 0;
 let running = false;
 let timer = null;
 
 // ===============================
-// PRÉ-CARREGAMENTO
+// PRÉ-CARREGAMENTO (corrige travada inicial)
 // ===============================
+const preload = [];
 deck.forEach(c => {
   const img = new Image();
   img.src = `cards/${c}.png`;
+  preload.push(img);
 });
 
 // ===============================
@@ -48,48 +53,40 @@ function clearTimer() {
 }
 
 // ===============================
-// QUEDA FRONTAL REAL (90° → 0°)
-// ===============================
-function dropCard(card) {
-  // começa de lado (frente)
-  cardImg.style.transform = "rotateY(90deg)";
-
-  // micro delay para sensação física
-  setTimeout(() => {
-    cardImg.src = `cards/${card}.png`;
-    cardImg.style.transform = "rotateY(0deg)";
-  }, 34);
-}
-
-// ===============================
 function runDeck() {
   if (!running) return;
 
-  // FINAL — fecha o baralho
+  // FINAL — fecha o baralho SEM frame fantasma
   if (index >= sequence.length) {
     running = false;
     clearTimer();
 
     timer = setTimeout(() => {
       cardImg.src = "cards/as.png";
-      cardImg.style.transform = "rotateY(90deg)";
       cardImg.style.opacity = 1;
-    }, 180);
+      cardImg.style.transform = "translateY(-6px)";
+    }, 120);
 
     return;
   }
 
   const currentCard = sequence[index];
 
-  dropCard(currentCard);
-  index++;
+  // movimento de queda
+  cardImg.style.transform = "translateY(22px)";
 
-  let delay = SPEED_START + Math.random() * 16;
+  timer = setTimeout(() => {
+    cardImg.src = `cards/${currentCard}.png`;
+    cardImg.style.transform = "translateY(-6px)";
+    index++; // <<< incremento seguro, depois do uso
+  }, 20);
+
+  let delay = SPEED_START;
 
   if (currentCard === forcedCard) {
     delay = SPEED_FORCE;
   } else if (index > sequence.length * 0.65) {
-    delay = SPEED_END + Math.random() * 12;
+    delay = SPEED_END;
   }
 
   timer = setTimeout(runDeck, delay);
@@ -105,12 +102,12 @@ function startDeck() {
   index = 0;
 
   cardImg.style.opacity = 1;
+  cardImg.style.transform = "translateY(-6px)";
   cardImg.src = "cards/as.png";
-  cardImg.style.transform = "rotateY(90deg)";
 
   sequence = prepareDeck(forcedCard);
 
-  timer = setTimeout(runDeck, 240);
+  timer = setTimeout(runDeck, 140);
 }
 
 // ===============================
