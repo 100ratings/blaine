@@ -24,6 +24,17 @@ const SPEED_END   = 30;
 let sequence = [];
 let index = 0;
 let running = false;
+let timer = null;
+
+// ===============================
+// PRÉ-CARREGAMENTO (corrige travada inicial)
+// ===============================
+const preload = [];
+deck.forEach(c => {
+  const img = new Image();
+  img.src = `cards/${c}.png`;
+  preload.push(img);
+});
 
 // ===============================
 function prepareDeck(force) {
@@ -34,13 +45,23 @@ function prepareDeck(force) {
 }
 
 // ===============================
+function clearTimer() {
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+}
+
+// ===============================
 function runDeck() {
   if (!running) return;
 
+  // FINAL — fecha o baralho SEM frame fantasma
   if (index >= sequence.length) {
     running = false;
+    clearTimer();
 
-    setTimeout(() => {
+    timer = setTimeout(() => {
       cardImg.src = "cards/as.png";
       cardImg.style.opacity = 1;
       cardImg.style.transform = "translateY(-6px)";
@@ -49,40 +70,44 @@ function runDeck() {
     return;
   }
 
-  // carta caindo para frente
+  const currentCard = sequence[index];
+
+  // movimento de queda
   cardImg.style.transform = "translateY(22px)";
 
-  setTimeout(() => {
-    cardImg.src = `cards/${sequence[index]}.png`;
+  timer = setTimeout(() => {
+    cardImg.src = `cards/${currentCard}.png`;
     cardImg.style.transform = "translateY(-6px)";
+    index++; // <<< incremento seguro, depois do uso
   }, 20);
 
   let delay = SPEED_START;
 
-  if (sequence[index] === forcedCard) {
+  if (currentCard === forcedCard) {
     delay = SPEED_FORCE;
   } else if (index > sequence.length * 0.65) {
     delay = SPEED_END;
   }
 
-  index++;
-  setTimeout(runDeck, delay);
+  timer = setTimeout(runDeck, delay);
 }
 
 // ===============================
 function startDeck() {
   if (running) return;
 
+  clearTimer();
+
   running = true;
   index = 0;
 
   cardImg.style.opacity = 1;
   cardImg.style.transform = "translateY(-6px)";
-
-  sequence = prepareDeck(forcedCard);
   cardImg.src = "cards/as.png";
 
-  setTimeout(runDeck, 140);
+  sequence = prepareDeck(forcedCard);
+
+  timer = setTimeout(runDeck, 140);
 }
 
 // ===============================
