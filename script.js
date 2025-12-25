@@ -14,9 +14,9 @@ const cardImg = document.getElementById("card");
 
 let forcedCard = "qh";
 
-const SPEED_START = 70;
-const SPEED_FORCE = 460;
-const SPEED_END   = 34;
+const SPEED_START = 90;
+const SPEED_FORCE = 520;
+const SPEED_END   = 38;
 
 let sequence = [];
 let index = 0;
@@ -24,7 +24,7 @@ let running = false;
 let timer = null;
 
 // ===============================
-// PRÉ-CARREGA IMAGENS
+// PRÉ-CARREGAMENTO
 // ===============================
 deck.forEach(c => {
   const img = new Image();
@@ -48,41 +48,48 @@ function clearTimer() {
 }
 
 // ===============================
+// QUEDA FRONTAL REAL (90° → 0°)
+// ===============================
+function dropCard(card) {
+  // começa de lado (frente)
+  cardImg.style.transform = "rotateY(90deg)";
+
+  // micro delay para sensação física
+  setTimeout(() => {
+    cardImg.src = `cards/${card}.png`;
+    cardImg.style.transform = "rotateY(0deg)";
+  }, 34);
+}
+
+// ===============================
 function runDeck() {
   if (!running) return;
 
+  // FINAL — fecha o baralho
   if (index >= sequence.length) {
     running = false;
     clearTimer();
 
-    // fechamento natural
     timer = setTimeout(() => {
       cardImg.src = "cards/as.png";
+      cardImg.style.transform = "rotateY(90deg)";
       cardImg.style.opacity = 1;
-      cardImg.style.transform = "translateY(0)";
-    }, 140);
+    }, 180);
 
     return;
   }
 
   const currentCard = sequence[index];
 
-  // queda contínua
-  cardImg.style.transform = "translateY(28px)";
+  dropCard(currentCard);
+  index++;
 
-  timer = setTimeout(() => {
-    cardImg.src = `cards/${currentCard}.png`;
-    cardImg.style.transform = "translateY(0)";
-    index++;
-  }, 60);
-
-  // variação humana leve
-  let delay = SPEED_START + Math.random() * 12;
+  let delay = SPEED_START + Math.random() * 16;
 
   if (currentCard === forcedCard) {
     delay = SPEED_FORCE;
   } else if (index > sequence.length * 0.65) {
-    delay = SPEED_END + Math.random() * 8;
+    delay = SPEED_END + Math.random() * 12;
   }
 
   timer = setTimeout(runDeck, delay);
@@ -98,12 +105,12 @@ function startDeck() {
   index = 0;
 
   cardImg.style.opacity = 1;
-  cardImg.style.transform = "translateY(0)";
   cardImg.src = "cards/as.png";
+  cardImg.style.transform = "rotateY(90deg)";
 
   sequence = prepareDeck(forcedCard);
 
-  timer = setTimeout(runDeck, 180);
+  timer = setTimeout(runDeck, 240);
 }
 
 // ===============================
