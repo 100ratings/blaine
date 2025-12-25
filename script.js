@@ -12,10 +12,9 @@ const deck = [
 const cardImg = document.getElementById("card");
 
 // ===============================
-// FORCE STATE
+// FORCE STATE (SIMPLIFICADO)
 // ===============================
-let activeForcedCard = null;
-let forcedRoundsLeft = 0;
+let forcedCard = null;
 
 // ===============================
 const SPEED_START = 60;
@@ -84,11 +83,8 @@ function runDeck() {
   }, 20);
 
   let delay = SPEED_START;
-  if (currentCard === sequence[Math.floor(sequence.length / 2)]) {
-    delay = SPEED_FORCE;
-  } else if (index > sequence.length * 0.65) {
-    delay = SPEED_END;
-  }
+  if (currentCard === forcedCard) delay = SPEED_FORCE;
+  else if (index > sequence.length * 0.65) delay = SPEED_END;
 
   timer = setTimeout(runDeck, delay);
 }
@@ -101,47 +97,44 @@ function startDeck() {
   running = true;
   index = 0;
 
-  let forceToUse = null;
-
-  if (forcedRoundsLeft > 0 && activeForcedCard) {
-    forceToUse = activeForcedCard;
-    forcedRoundsLeft--;
-    if (forcedRoundsLeft === 0) {
-      activeForcedCard = null;
-    }
-  } else {
-    forceToUse = getRandomCard();
-  }
+  const cardToUse = forcedCard || getRandomCard();
 
   cardImg.src = "cards/as.png";
   cardImg.style.transform = "translateY(-6px)";
-  sequence = prepareDeck(forceToUse);
+  sequence = prepareDeck(cardToUse);
 
   timer = setTimeout(runDeck, 140);
 }
 
 // ===============================
-// TAP → INICIA BARALHO
+// TAP INICIA BARALHO
 // ===============================
-let touchMoved = false;
-
-document.body.addEventListener("touchstart", () => {
-  touchMoved = false;
-});
-
-document.body.addEventListener("touchmove", () => {
-  touchMoved = true;
-});
-
-document.body.addEventListener("touchend", () => {
-  if (!touchMoved) startDeck();
-});
-
-// Desktop
 document.body.addEventListener("click", startDeck);
+document.body.addEventListener("touchstart", startDeck);
 
 // ===============================
-// SWIPE INVISÍVEL (APENAS INPUT)
+// INDICADOR VISUAL (DEBUG)
+// ===============================
+const indicator = document.createElement("div");
+indicator.style.position = "fixed";
+indicator.style.bottom = "16px";
+indicator.style.left = "50%";
+indicator.style.transform = "translateX(-50%)";
+indicator.style.color = "#0f0";
+indicator.style.fontFamily = "monospace";
+indicator.style.fontSize = "14px";
+indicator.style.opacity = "0";
+indicator.style.transition = "opacity 0.2s";
+document.body.appendChild(indicator);
+
+function showIndicator(text) {
+  indicator.textContent = text;
+  indicator.style.opacity = "1";
+  setTimeout(() => indicator.style.opacity = "0", 1500);
+}
+
+// ===============================
+// SWIPE INPUT (CORRIGIDO)
 // ===============================
 let swipeBuffer = [];
 let sx = 0, sy = 0;
@@ -167,27 +160,47 @@ document.addEventListener("touchend", e => {
 
   if (swipeBuffer.length === 3) {
     const card = decodeSwipe(swipeBuffer);
-    if (card) {
-      activeForcedCard = card;
-      forcedRoundsLeft = 2;
-    }
     swipeBuffer = [];
+
+    if (card) {
+      forcedCard = card;
+      showIndicator(`Carta setada: ${card.toUpperCase()}`);
+    } else {
+      showIndicator("Swipe inválido");
+    }
   }
 }, { passive: true });
 
 // ===============================
+// DECODER (REESCRITO E CORRETO)
+// ===============================
 function decodeSwipe([a, b, c]) {
   const valueMap = {
-    "UR":"a","RU":"2","RR":"3","RD":"4",
-    "DR":"5","DD":"6","DL":"7",
-    "LD":"8","LL":"9","LU":"x",
-    "UL":"j","UU":"q","UD":"k"
+    "UR":"a",
+    "RU":"2",
+    "RR":"3",
+    "RD":"4",
+    "DR":"5",
+    "DD":"6",
+    "DL":"7",
+    "LD":"8",
+    "LL":"9",
+    "LU":"x",
+    "UL":"j",
+    "UU":"q",
+    "UD":"k"
   };
 
   const suitMap = {
-    "U":"s","R":"h","D":"c","L":"d"
+    "U":"s",
+    "R":"h",
+    "D":"c",
+    "L":"d"
   };
 
-  if (!valueMap[a + b] || !suitMap[c]) return null;
-  return valueMap[a + b] + suitMap[c];
+  const value = valueMap[a + b];
+  const suit = suitMap[c];
+
+  if (!value || !suit) return null;
+  return value + suit;
 }
