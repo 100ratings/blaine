@@ -1,6 +1,5 @@
 // ===============================
 // BARALHO — MNEMONICA ROTACIONADA
-// COMEÇANDO NO ÁS DE ESPADAS
 // ===============================
 const deck = [
   "as","5h","9s","2s","qh","3d","qc","8h","6s","5s","9h","kc",
@@ -10,13 +9,13 @@ const deck = [
   "7c","3c","4h","6d"
 ];
 
-// ===============================
 const cardImg = document.getElementById("card");
 
 // ===============================
-// FORCE
+// FORCE STATE
 // ===============================
-let forcedCard = "qh"; // default
+let activeForcedCard = null;
+let forcedRoundsLeft = 0;
 
 // ===============================
 const SPEED_START = 60;
@@ -36,6 +35,11 @@ deck.forEach(c => {
   const img = new Image();
   img.src = `cards/${c}.png`;
 });
+
+// ===============================
+function getRandomCard() {
+  return deck[Math.floor(Math.random() * deck.length)];
+}
 
 // ===============================
 function prepareDeck(force) {
@@ -61,9 +65,8 @@ function runDeck() {
     running = false;
     clearTimer();
 
-    timer = setTimeout(() => {
+    setTimeout(() => {
       cardImg.src = "cards/as.png";
-      cardImg.style.opacity = 1;
       cardImg.style.transform = "translateY(-6px)";
     }, 120);
 
@@ -81,8 +84,7 @@ function runDeck() {
   }, 20);
 
   let delay = SPEED_START;
-
-  if (currentCard === forcedCard) {
+  if (currentCard === sequence[Math.floor(sequence.length / 2)]) {
     delay = SPEED_FORCE;
   } else if (index > sequence.length * 0.65) {
     delay = SPEED_END;
@@ -99,58 +101,80 @@ function startDeck() {
   running = true;
   index = 0;
 
-  cardImg.style.opacity = 1;
-  cardImg.style.transform = "translateY(-6px)";
-  cardImg.src = "cards/as.png";
+  let forceToUse = null;
 
-  sequence = prepareDeck(forcedCard);
+  if (forcedRoundsLeft > 0 && activeForcedCard) {
+    forceToUse = activeForcedCard;
+    forcedRoundsLeft--;
+    if (forcedRoundsLeft === 0) {
+      activeForcedCard = null;
+    }
+  } else {
+    forceToUse = getRandomCard();
+  }
+
+  cardImg.src = "cards/as.png";
+  cardImg.style.transform = "translateY(-6px)";
+  sequence = prepareDeck(forceToUse);
+
   timer = setTimeout(runDeck, 140);
 }
 
 // ===============================
-// TOQUE INICIA BARALHO
+// TAP → INICIA BARALHO
 // ===============================
+let touchMoved = false;
+
+document.body.addEventListener("touchstart", () => {
+  touchMoved = false;
+});
+
+document.body.addEventListener("touchmove", () => {
+  touchMoved = true;
+});
+
+document.body.addEventListener("touchend", () => {
+  if (!touchMoved) startDeck();
+});
+
+// Desktop
 document.body.addEventListener("click", startDeck);
-document.body.addEventListener("touchstart", startDeck);
 
 // ===============================
-// SWIPE INVISÍVEL (NÃO INICIA)
+// SWIPE INVISÍVEL (APENAS INPUT)
 // ===============================
 let swipeBuffer = [];
-let startX = 0;
-let startY = 0;
+let sx = 0, sy = 0;
 
 document.addEventListener("touchstart", e => {
-  startX = e.touches[0].clientX;
-  startY = e.touches[0].clientY;
+  sx = e.touches[0].clientX;
+  sy = e.touches[0].clientY;
 }, { passive: true });
 
 document.addEventListener("touchend", e => {
-  if (running) return; // ignora swipe durante animação
+  if (running) return;
 
-  const dx = e.changedTouches[0].clientX - startX;
-  const dy = e.changedTouches[0].clientY - startY;
+  const dx = e.changedTouches[0].clientX - sx;
+  const dy = e.changedTouches[0].clientY - sy;
 
-  if (Math.abs(dx) < 30 && Math.abs(dy) < 30) return;
+  if (Math.abs(dx) < 40 && Math.abs(dy) < 40) return;
 
   let dir;
-  if (Math.abs(dx) > Math.abs(dy)) {
-    dir = dx > 0 ? "R" : "L";
-  } else {
-    dir = dy > 0 ? "D" : "U";
-  }
+  if (Math.abs(dx) > Math.abs(dy)) dir = dx > 0 ? "R" : "L";
+  else dir = dy > 0 ? "D" : "U";
 
   swipeBuffer.push(dir);
 
   if (swipeBuffer.length === 3) {
     const card = decodeSwipe(swipeBuffer);
-    if (card) forcedCard = card;
+    if (card) {
+      activeForcedCard = card;
+      forcedRoundsLeft = 2;
+    }
     swipeBuffer = [];
   }
 }, { passive: true });
 
-// ===============================
-// DECODIFICA SWIPE → CARTA
 // ===============================
 function decodeSwipe([a, b, c]) {
   const valueMap = {
@@ -164,9 +188,6 @@ function decodeSwipe([a, b, c]) {
     "U":"s","R":"h","D":"c","L":"d"
   };
 
-  const value = valueMap[a + b];
-  const suit = suitMap[c];
-
-  if (!value || !suit) return null;
-  return value + suit;
+  if (!valueMap[a + b] || !suitMap[c]) return null;
+  return valueMap[a + b] + suitMap[c];
 }
