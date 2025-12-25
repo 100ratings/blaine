@@ -11,29 +11,20 @@ const deck = [
 ];
 
 // ===============================
-// ELEMENTOS
-// ===============================
 const cardImg = document.getElementById("card");
-const stack   = document.getElementById("stack");
 
 // ===============================
-// CONFIGURAÇÃO
-// ===============================
-let forcedCard = "qh"; // <<< carta forçada
+let forcedCard = "qh";
 
 const SPEED_START = 60;
 const SPEED_FORCE = 420;
 const SPEED_END   = 30;
 
 // ===============================
-// ESTADO
-// ===============================
 let sequence = [];
 let index = 0;
 let running = false;
 
-// ===============================
-// PREPARA BARALHO (FORÇA NO MEIO)
 // ===============================
 function prepareDeck(force) {
   let temp = deck.filter(c => c !== force);
@@ -43,28 +34,9 @@ function prepareDeck(force) {
 }
 
 // ===============================
-// ATUALIZA ESPESSURA DO BARALHO
-// ===============================
-function updateStack() {
-  const remaining = sequence.length - index;
-  const ratio = remaining / sequence.length;
-
-  const x = 10 * ratio;
-  const y = -14 * ratio;
-
-  stack.style.transform =
-    `translate(${x}px, ${y}px) skewY(-2deg)`;
-
-  stack.style.opacity = ratio;
-}
-
-// ===============================
-// ANIMAÇÃO PRINCIPAL
-// ===============================
 function runDeck() {
   if (!running) return;
 
-  // FINAL — fecha o baralho
   if (index >= sequence.length) {
     running = false;
 
@@ -72,20 +44,17 @@ function runDeck() {
       cardImg.src = "cards/as.png";
       cardImg.style.opacity = 1;
       cardImg.style.transform = "translateY(-6px)";
-      stack.style.opacity = 1;
-      stack.style.transform = "translate(10px, -14px) skewY(-2deg)";
     }, 120);
 
     return;
   }
 
-  // carta "caindo para a frente"
+  // carta caindo para frente
   cardImg.style.transform = "translateY(22px)";
 
   setTimeout(() => {
     cardImg.src = `cards/${sequence[index]}.png`;
     cardImg.style.transform = "translateY(-6px)";
-    updateStack();
   }, 20);
 
   let delay = SPEED_START;
@@ -101,8 +70,6 @@ function runDeck() {
 }
 
 // ===============================
-// START / RESET
-// ===============================
 function startDeck() {
   if (running) return;
 
@@ -111,8 +78,6 @@ function startDeck() {
 
   cardImg.style.opacity = 1;
   cardImg.style.transform = "translateY(-6px)";
-  stack.style.opacity = 1;
-  stack.style.transform = "translate(10px, -14px) skewY(-2deg)";
 
   sequence = prepareDeck(forcedCard);
   cardImg.src = "cards/as.png";
@@ -120,8 +85,6 @@ function startDeck() {
   setTimeout(runDeck, 140);
 }
 
-// ===============================
-// INTERAÇÃO
 // ===============================
 document.body.addEventListener("click", startDeck);
 document.body.addEventListener("touchstart", startDeck);
