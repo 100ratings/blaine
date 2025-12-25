@@ -11,6 +11,11 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+
+  /* ajuda no iPhone */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 #stage {
@@ -36,4 +41,40 @@ body {
   box-shadow: 0 18px 45px rgba(0,0,0,0.75);
   transform: translateY(-6px);
   transition: transform 0.08s linear, opacity 0.12s linear;
+}
+
+/* indicador de swipe (debug / confirmação) */
+#swipe-indicator {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+
+  padding: 8px 10px;
+  border-radius: 10px;
+
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  letter-spacing: 0.2px;
+
+  color: rgba(255,255,255,0.92);
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(6px);
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+#swipe-indicator.show {
+  opacity: 1;
+}
+
+#swipe-indicator.ok {
+  color: rgba(120, 255, 170, 0.95);
+}
+
+#swipe-indicator.bad {
+  color: rgba(255, 140, 140, 0.95);
 }
