@@ -215,13 +215,18 @@ function runDeck() {
     cardImg.style.transform = "translateY(-6px)";
     index++;
 
-    // Se ACABOU (acabou de mostrar a última carta), finalize rápido
-    if (index >= sequence.length) {
-      running = false;
-      clearTimer();
-      setTimeout(showRetryOnly, LAST_CARD_EXIT_DELAY);
-      return;
-    }
+// se acabou de mostrar a ÚLTIMA carta, encerra rápido (igual ao resto)
+if (index >= sequence.length) {
+  running = false;
+  clearTimer();
+
+  setTimeout(() => {
+    cardImg.src = "cards/as.png";
+    cardImg.style.opacity = 1;
+    cardImg.style.transform = "translateY(-6px)";
+  }, SPEED_END); // <-- controla quanto tempo a última carta fica
+  return;
+}
 
     // Próximo delay normal
     let delay = SPEED_START;
@@ -383,3 +388,4 @@ deckEl.addEventListener("click", (e) => {
   if (awaitingRetry) return;
   if (e.target === cardImg) startDeck();
 });
+
