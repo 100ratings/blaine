@@ -29,7 +29,7 @@ const SPEED_START = 60;
 const SPEED_END   = 30;
 
 // Quanto tempo a ÚLTIMA carta fica na tela antes de aparecer "Tentar de novo"
-const LAST_CARD_EXIT_DELAY = SPEED_END;
+const LAST_CARD_EXIT_DELAY = 120; // ~0.12s
 
 // ===============================
 let sequence = [];
@@ -382,3 +382,4 @@ deckEl.addEventListener("click", (e) => {
   if (awaitingRetry) return;
   if (e.target === cardImg) startDeck();
 });
+
