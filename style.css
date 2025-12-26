@@ -39,73 +39,42 @@ body {
   object-fit: cover;
   border-radius: 14px;
   box-shadow: 0 18px 45px rgba(0,0,0,0.75);
-
-  transform: translateY(-6px) translateX(0px);
+  transform: translateY(-6px);
   transition: transform 0.08s linear, opacity 0.12s linear;
 }
 
-/* indicador (sutil, só a carta) */
+/* indicador de swipe (debug / confirmação) */
 #swipe-indicator {
   position: fixed;
   left: 50%;
-  bottom: 14px;
+  bottom: 18px;
   transform: translateX(-50%);
 
-  padding: 6px 8px;
-  border-radius: 999px;
+  padding: 8px 10px;
+  border-radius: 10px;
 
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.2px;
 
-  color: rgba(255,255,255,0.85);
-  background: rgba(0,0,0,0.30);
-  border: 1px solid rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.92);
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.12);
   backdrop-filter: blur(6px);
 
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.16s ease;
+  transition: opacity 0.18s ease;
 }
 
 #swipe-indicator.show {
-  opacity: 0.60;
-}
-
-/* Tentar de novo (pílula central) */
-#try-again {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-
   opacity: 1;
-  pointer-events: auto;
 }
 
-#try-again.hidden {
-  opacity: 0;
-  pointer-events: none;
+#swipe-indicator.ok {
+  color: rgba(120, 255, 170, 0.95);
 }
 
-#try-again .pill {
-  padding: 12px 16px;
-  border-radius: 999px;
-
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  font-size: 16px;
-  letter-spacing: 0.2px;
-
-  color: rgba(255,255,255,0.92);
-  background: rgba(0,0,0,0.45);
-  border: 1px solid rgba(255,255,255,0.14);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 18px 45px rgba(0,0,0,0.35);
-
-  animation: pulse 0.85s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.92; }
-  50%      { transform: scale(1.04); opacity: 1; }
+#swipe-indicator.bad {
+  color: rgba(255, 140, 140, 0.95);
 }
