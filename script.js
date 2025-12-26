@@ -70,6 +70,7 @@ function clearTimer() {
 // ===============================
 // INDICADOR (STEALTH)
 // - só mostra a CARTA no final do swipe (sem verde / sem setas)
+// - mais pra baixo (ajuste aqui)
 // ===============================
 let indicatorTimeout = null;
 let indicatorStyled = false;
@@ -82,7 +83,7 @@ function styleIndicatorOnce() {
     position: "fixed",
     right: "10px",
     left: "auto",
-    top: "50%",
+    top: "62%",                 // <-- MAIS PRA BAIXO (ajuste fino aqui)
     transform: "translateY(-50%)",
     zIndex: "9999",
     background: "transparent",
@@ -179,8 +180,8 @@ function hideRetryAndShowAceOnly() {
   cardImg.style.transform = "translateY(-6px)";
 }
 
-// IMPORTANTE: agora NÃO inicia automaticamente.
-// Clicou "Tentar de novo" => volta pro Ás e espera o toque no Ás.
+// IMPORTANTE: NÃO inicia automaticamente.
+// Clicou "Tentar de novo" => volta pro Ás e espera toque no Ás.
 let suppressClickUntil = 0;
 retryBtn.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -190,12 +191,12 @@ retryBtn.addEventListener("click", (e) => {
 
 // ===============================
 // ANIMAÇÃO DO BARALHO
-// (ajuste principal: finalizar logo após a última carta aparecer,
-// em vez de deixar a última carta “parada” esperando o próximo loop)
+// (fim: após mostrar a ÚLTIMA carta, espera ~SPEED_END e chama showRetryOnly())
 // ===============================
 function runDeck() {
   if (!running) return;
 
+  // se por algum motivo alguém chamar com index já fora, encerra
   if (index >= sequence.length) {
     running = false;
     clearTimer();
@@ -215,18 +216,13 @@ function runDeck() {
     cardImg.style.transform = "translateY(-6px)";
     index++;
 
-// se acabou de mostrar a ÚLTIMA carta, encerra rápido (igual ao resto)
-if (index >= sequence.length) {
-  running = false;
-  clearTimer();
-
-  setTimeout(() => {
-    cardImg.src = "cards/as.png";
-    cardImg.style.opacity = 1;
-    cardImg.style.transform = "translateY(-6px)";
-  }, SPEED_END); // <-- controla quanto tempo a última carta fica
-  return;
-}
+    // SE ACABOU de mostrar a última carta: encerra rápido -> "Tentar de novo"
+    if (index >= sequence.length) {
+      running = false;
+      clearTimer();
+      setTimeout(showRetryOnly, LAST_CARD_EXIT_DELAY);
+      return;
+    }
 
     // Próximo delay normal
     let delay = SPEED_START;
@@ -371,7 +367,7 @@ document.addEventListener("touchend", (e) => {
     return;
   }
 
-  // TAP: agora exige tocar NO ÁS (imagem), não só no deck
+  // TAP: exige tocar NO ÁS (imagem)
   const now = Date.now();
   if (now < suppressClickUntil) return;
 
@@ -388,4 +384,3 @@ deckEl.addEventListener("click", (e) => {
   if (awaitingRetry) return;
   if (e.target === cardImg) startDeck();
 });
-
