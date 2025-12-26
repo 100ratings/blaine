@@ -32,6 +32,44 @@ body {
   height: 100%;
 }
 
+/* ===============================
+   STACK DE CARTAS (ATRÁS)
+   =============================== */
+
+#deck::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  right: -7px;
+  bottom: -7px;
+
+  /* linhas horizontais simulando cartas empilhadas */
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.32) 0px,
+      rgba(255,255,255,0.32) 1px,
+      rgba(0,0,0,0.18) 2px,
+      rgba(0,0,0,0.18) 3px
+    );
+
+  border-radius: 16px;
+
+  /* luz morre para trás */
+  box-shadow:
+    inset -8px 0 10px rgba(0,0,0,0.35),
+    inset 0 -8px 10px rgba(0,0,0,0.25);
+
+  filter: brightness(0.88);
+
+  pointer-events: none;
+}
+
+/* ===============================
+   CARTA (LIMPA, NA FRENTE)
+   =============================== */
+
 #card {
   position: relative;
   width: 100%;
@@ -40,7 +78,9 @@ body {
 
   border-radius: 14px;
 
-  /* sombra principal (frente) */
+  background: #fff;
+
+  /* sombra real da carta */
   box-shadow:
     0 18px 45px rgba(0,0,0,0.75);
 
@@ -50,41 +90,8 @@ body {
   transition:
     transform 0.18s cubic-bezier(.22,.61,.36,1),
     opacity 0.14s ease;
-}
 
-/* ===============================
-   PROFUNDIDADE — ESPESSURA DO BARALHO
-   =============================== */
-
-#card::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: -8px;
-  width: 8px;
-  height: 100%;
-
-  /* micro-linhas simulando cartas empilhadas */
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      rgba(255,255,255,0.35) 0px,
-      rgba(255,255,255,0.35) 1px,
-      rgba(0,0,0,0.18) 2px,
-      rgba(0,0,0,0.18) 3px
-    );
-
-  /* cantos contínuos pela profundidade */
-  border-radius: 0 14px 14px 0;
-
-  /* luz morrendo na lateral */
-  box-shadow:
-    inset -6px 0 8px rgba(0,0,0,0.28);
-
-  /* reduz contraste pra não chamar atenção */
-  filter: brightness(0.92);
-
-  pointer-events: none;
+  z-index: 2;
 }
 
 /* ===============================
