@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Blaine Deck</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -10,10 +10,15 @@
 <body>
   <div id="stage">
     <div id="deck">
+      <div class="stack stack-3" aria-hidden="true"></div>
+      <div class="stack stack-2" aria-hidden="true"></div>
+      <div class="stack stack-1" aria-hidden="true"></div>
+
       <img id="card" src="cards/as.png" alt="card" />
     </div>
   </div>
 
+  <!-- indicador (pra você validar o swipe; depois dá pra ocultar) -->
   <div id="swipe-indicator" aria-hidden="true"></div>
 
   <script src="script.js"></script>
