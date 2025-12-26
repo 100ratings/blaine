@@ -23,11 +23,12 @@ let forcedRunsLeft = 0;
 let forceThisRun = null;
 
 // ===============================
+// VELOCIDADES (sem pausa no force)
+// ===============================
 const SPEED_START = 60;
-const SPEED_FORCE = 320;  // pausa do force (no meio)
-const SPEED_END   = 25;   // fim rápido
+const SPEED_END   = 30;
 
-// quanto tempo a ÚLTIMA carta fica antes de mostrar "Tentar de novo"
+// Quanto tempo a ÚLTIMA carta fica na tela antes de aparecer "Tentar de novo"
 const LAST_CARD_EXIT_DELAY = SPEED_END;
 
 // ===============================
@@ -54,19 +55,13 @@ function getRandomCard() {
 }
 
 // ===============================
-// FORCE no meio + FORCE no final (sem aumentar o total)
-// (ou seja: substitui a última carta original — o 6♦ — pelo force)
+// AQUI: force SOMENTE NO FINAL (última carta)
+// - remove a carta do force do resto do deck
+// - coloca o force como última carta
 // ===============================
 function prepareDeck(force) {
   const temp = deck.filter(c => c !== force);
-  const middle = Math.floor(temp.length / 2);
-
-  // force no meio
-  temp.splice(middle, 0, force);
-
-  // force novamente no final (substitui a última carta)
-  temp[temp.length - 1] = force;
-
+  temp.push(force);
   return temp;
 }
 
@@ -79,7 +74,7 @@ function clearTimer() {
 
 // ===============================
 // INDICADOR (STEALTH)
-// - só mostra a CARTA no final do swipe (sem verde / sem setas)
+// - só mostra a CARTA após o swipe (sem verde / sem setas)
 // - mais pra baixo (ajuste no "top")
 // ===============================
 let indicatorTimeout = null;
@@ -91,9 +86,9 @@ function styleIndicatorOnce() {
 
   Object.assign(indicator.style, {
     position: "fixed",
-    right: "8px",
+    right: "10px",
     left: "auto",
-    top: "98%",
+    top: "62%",                 // <-- ajuste fino aqui (mais baixo = número maior)
     transform: "translateY(-50%)",
     zIndex: "9999",
     background: "transparent",
@@ -201,7 +196,7 @@ retryBtn.addEventListener("click", (e) => {
 
 // ===============================
 // ANIMAÇÃO DO BARALHO
-// (fim: após mostrar a última carta, espera pouco e chama showRetryOnly())
+// - sem pausa no force (force só existe no final)
 // ===============================
 function runDeck() {
   if (!running) return;
@@ -225,7 +220,7 @@ function runDeck() {
     cardImg.style.transform = "translateY(-6px)";
     index++;
 
-    // se acabou de mostrar a ÚLTIMA carta: some rápido -> "Tentar de novo"
+    // se acabou de mostrar a última carta (que é o force): some rápido -> "Tentar de novo"
     if (index >= sequence.length) {
       running = false;
       clearTimer();
@@ -233,16 +228,8 @@ function runDeck() {
       return;
     }
 
-    // próximo passo
-    let delay = SPEED_START;
-
-    // pausa no force (vai valer pro force do meio; o do final já encerra acima)
-    if (currentCard === forceThisRun) {
-      delay = SPEED_FORCE;
-    } else if (index > sequence.length * 0.65) {
-      delay = SPEED_END;
-    }
-
+    // próximo passo (normal)
+    const delay = (index > sequence.length * 0.65) ? SPEED_END : SPEED_START;
     timer = setTimeout(runDeck, delay);
   }, 20);
 }
@@ -259,7 +246,7 @@ function startDeck() {
   if (forcedRunsLeft > 0 && forcedOverride) {
     forceThisRun = forcedOverride;
     forcedRunsLeft--;
-    if (forcedRunsLeft === 0) forcedOverride = null;
+    if (forcedRunsLeft === 0) forcedOverride = null; // volta ao aleatório
   } else {
     forceThisRun = getRandomCard();
   }
@@ -268,6 +255,7 @@ function startDeck() {
   cardImg.style.transform = "translateY(-6px)";
   cardImg.src = "cards/as.png";
 
+  // sequência com force SOMENTE no final
   sequence = prepareDeck(forceThisRun);
   timer = setTimeout(runDeck, 140);
 }
@@ -394,8 +382,3 @@ deckEl.addEventListener("click", (e) => {
   if (awaitingRetry) return;
   if (e.target === cardImg) startDeck();
 });
-
-
-
-
-
