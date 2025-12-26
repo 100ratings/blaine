@@ -25,11 +25,11 @@ let forceThisRun = null;
 // ===============================
 // VELOCIDADES (sem pausa no force)
 // ===============================
-const SPEED_START = 60;
-const SPEED_END   = 30;
+const SPEED_START = 30;
+const SPEED_END   = 60;
 
 // Quanto tempo a ÚLTIMA carta fica na tela antes de aparecer "Tentar de novo"
-const LAST_CARD_EXIT_DELAY = 120; // ~0.12s
+const LAST_CARD_EXIT_DELAY = 100; // ~0.12s
 
 // ===============================
 let sequence = [];
@@ -382,5 +382,6 @@ deckEl.addEventListener("click", (e) => {
   if (awaitingRetry) return;
   if (e.target === cardImg) startDeck();
 });
+
 
 
