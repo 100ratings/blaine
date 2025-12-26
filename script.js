@@ -1,265 +1,242 @@
-// ===============================
-// CONFIGURAÇÃO
-// ===============================
+/**
+ * BLAINE DECK ENGINE - Advanced 3D Card Physics & Interaction
+ * Versão: 2.0.0
+ * Descrição: Gerencia a profundidade, animações de queda e interações táteis.
+ */
 
-// Quantas cartas aparecem no total (inclui a forçada)
-const CARDS_TO_SHOW = 25;
+(function() {
+    'use strict';
 
-// ===============================
-// BARALHO — MNEMONICA ROTACIONADA
-// ===============================
-const deck = [
-  "as","5h","9s","2s","qh","3d","qc","8h","6s","5s","9h","kc",
+    // ==========================================
+    // 1. CONFIGURAÇÕES E ESTADO GLOBAL
+    // ==========================================
+    const CONFIG = {
+        cardPath: 'cards/',
+        cards: '"as","5h","9s","2s","qh","3d","qc","8h","6s","5s","9h","kc",
   "2d","jh","3s","8s","6h","xc","5d","kd","2c","3h","8d","5c",
   "ks","jd","8c","xs","kh","jc","7s","xh","ad","4s","7h","4d",
   "ac","9c","js","qd","7d","qs","xd","6c","ah","9d","4c","2h",
-  "7c","3c","4h","6d"
-];
+  "7c","3c","4h","6d"], // Expanda conforme necessário
+        animationDuration: 850, // ms
+        shakeIntensity: 5,      // px para o impacto
+        depthOffset: 0.5,       // Deslocamento para simular espessura
+        perspectiveValue: 1200
+    };
 
-const deckEl = document.getElementById("deck");
-const cardImg = document.getElementById("card");
-const indicator = document.getElementById("swipe-indicator");
+    let state = {
+        currentIndex: 0,
+        isAnimating: false,
+        touchStartX: 0,
+        touchStartY: 0,
+        lastInteractionTime: 0,
+        autoPlayTimer: null
+    };
 
-// ===============================
-// FORCE STATE
-// ===============================
-let forcedOverride = null;
-let forcedRunsLeft = 0;
-let forceThisRun = null;
+    // ==========================================
+    // 2. SELEÇÃO DE ELEMENTOS DOM
+    // ==========================================
+    const DOM = {
+        stage: document.getElementById('stage'),
+        deck: document.getElementById('deck'),
+        container: document.getElementById('card-container'),
+        currentCard: document.getElementById('card'),
+        nextCard: document.getElementById('next-card')
+    };
 
-// ===============================
-// VELOCIDADES
-// ===============================
-const SPEED_START = 60;
-const SPEED_END   = 38;
-const LAST_CARD_EXIT_DELAY = 120;
-
-// ===============================
-let sequence = [];
-let index = 0;
-let running = false;
-let timer = null;
-let awaitingRetry = false;
-
-// ===============================
-// PRÉ-CARREGAMENTO
-// ===============================
-deck.forEach(c => {
-  const img = new Image();
-  img.src = `cards/${c}.png`;
-});
-
-function getRandomCard() {
-  return deck[Math.floor(Math.random() * deck.length)];
-}
-
-// ===============================
-// PREPARA SEQUÊNCIA (quantidade + force no final)
-// ===============================
-function prepareDeck(force) {
-  const pool = deck.filter(c => c !== force);
-
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-
-  const slice = pool.slice(0, Math.max(1, CARDS_TO_SHOW - 1));
-  slice.push(force);
-
-  return slice;
-}
-
-function clearTimer() {
-  if (timer) {
-    clearTimeout(timer);
-    timer = null;
-  }
-}
-
-// ===============================
-// INDICADOR STEALTH
-// ===============================
-let indicatorTimeout = null;
-
-function showIndicatorStealth(text) {
-  if (!indicator) return;
-  indicator.textContent = text;
-  indicator.style.opacity = "1";
-
-  clearTimeout(indicatorTimeout);
-  indicatorTimeout = setTimeout(() => {
-    indicator.style.opacity = "0";
-  }, 420);
-}
-
-// ===============================
-// BOTÃO "TENTAR DE NOVO"
-// ===============================
-const retryBtn = document.createElement("button");
-retryBtn.textContent = "Tentar de novo";
-
-Object.assign(retryBtn.style, {
-  position: "absolute",
-  left: "50%",
-  top: "50%",
-  transform: "translate(-50%, -50%)",
-  padding: "14px 18px",
-  borderRadius: "14px",
-  border: "1px solid rgba(255,255,255,0.16)",
-  background: "rgba(0,0,0,0.55)",
-  color: "rgba(255,255,255,0.92)",
-  fontSize: "15px",
-  opacity: "0",
-  display: "none",
-  transition: "opacity 0.18s ease",
-  zIndex: "10"
-});
-
-deckEl.appendChild(retryBtn);
-
-function showRetryOnly() {
-  awaitingRetry = true;
-  cardImg.style.opacity = "0";
-  retryBtn.style.display = "block";
-  requestAnimationFrame(() => retryBtn.style.opacity = "1");
-}
-
-function hideRetryAndShowAceOnly() {
-  awaitingRetry = false;
-  retryBtn.style.opacity = "0";
-  setTimeout(() => retryBtn.style.display = "none", 200);
-
-  cardImg.src = "cards/as.png";
-  cardImg.style.opacity = "1";
-}
-
-let suppressClickUntil = 0;
-
-retryBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  suppressClickUntil = Date.now() + 450;
-  hideRetryAndShowAceOnly();
-});
-
-// ===============================
-// ANIMAÇÃO DO BARALHO (FLUIDA)
-// ===============================
-function runDeck() {
-  if (!running) return;
-
-  if (index >= sequence.length) {
-    running = false;
-    showRetryOnly();
-    return;
-  }
-
-  const currentCard = sequence[index];
-
-  cardImg.style.transform = "translateY(14px)";
-  cardImg.style.opacity = "0";
-
-  clearTimer();
-  timer = setTimeout(() => {
-    cardImg.src = `cards/${currentCard}.png`;
-
-    requestAnimationFrame(() => {
-      cardImg.style.transform = "translateY(0)";
-      cardImg.style.opacity = "1";
-    });
-
-    index++;
-
-    if (index >= sequence.length) {
-      running = false;
-      setTimeout(showRetryOnly, LAST_CARD_EXIT_DELAY);
-      return;
+    // Verificação de segurança
+    if (!DOM.currentCard || !DOM.deck) {
+        console.error("Erro: Elementos do DOM não encontrados. Verifique o HTML.");
+        return;
     }
 
-    const delay = (index > sequence.length * 0.65) ? SPEED_END : SPEED_START;
-    timer = setTimeout(runDeck, delay);
-  }, 40);
-}
+    // ==========================================
+    // 3. INICIALIZAÇÃO DO AMBIENTE 3D
+    // ==========================================
+    const init = () => {
+        console.log("Iniciando Blaine Deck Engine...");
+        
+        // Configurar estado inicial das imagens
+        updateCardImages();
+        
+        // Aplicar perspectiva inicial
+        DOM.stage.style.perspective = `${CONFIG.perspectiveValue}px`;
+        
+        // Registrar Eventos
+        registerEventListeners();
+        
+        // Iniciar loop de renderização leve para efeitos ociosos
+        requestAnimationFrame(idleAnimationLoop);
+    };
 
-function startDeck() {
-  if (running || awaitingRetry) return;
+    const updateCardImages = () => {
+        const nextIndex = (state.currentIndex + 1) % CONFIG.cards.length;
+        DOM.currentCard.src = `${CONFIG.cardPath}${CONFIG.cards[state.currentIndex]}`;
+        DOM.nextCard.src = `${CONFIG.cardPath}${CONFIG.cards[nextIndex]}`;
+    };
 
-  running = true;
-  index = 0;
+    // ==========================================
+    // 4. LÓGICA DE ANIMAÇÃO DE QUEDA (CORE)
+    // ==========================================
+    const triggerCardFall = (direction = 'forward') => {
+        if (state.isAnimating) return;
+        
+        const now = Date.now();
+        if (now - state.lastInteractionTime < 200) return; // Debounce extra
 
-  if (forcedRunsLeft > 0 && forcedOverride) {
-    forceThisRun = forcedOverride;
-    forcedRunsLeft--;
-    if (forcedRunsLeft === 0) forcedOverride = null;
-  } else {
-    forceThisRun = getRandomCard();
-  }
+        state.isAnimating = true;
+        state.lastInteractionTime = now;
 
-  cardImg.src = "cards/as.png";
-  cardImg.style.opacity = "1";
+        // Som de "papel" (Opcional: descomente se tiver o arquivo)
+        // playCardSound();
 
-  sequence = prepareDeck(forceThisRun);
-  timer = setTimeout(runDeck, 120);
-}
+        // Criar elemento de animação (Clone para manter performance)
+        const fallingElement = DOM.currentCard.cloneNode(true);
+        fallingElement.classList.add('falling-animation');
+        
+        // Adicionar variação aleatória de rotação para parecer mais real
+        const randomRotation = (Math.random() - 0.5) * 10;
+        fallingElement.style.setProperty('--random-rotate', `${randomRotation}deg`);
+        
+        DOM.container.appendChild(fallingElement);
 
-// ===============================
-// SWIPE INPUT
-// ===============================
-const SWIPE_MIN = 42;
-let sx = 0, sy = 0;
-let swipeBuffer = [];
+        // Feedback de impacto no maço (Shake)
+        applyDeckImpact();
 
-function decodeSwipe([a,b,c]) {
-  const valueMap = {
-    "UR":"a","RU":"2","RR":"3","RD":"4","DR":"5","DD":"6",
-    "DL":"7","LD":"8","LL":"9","LU":"x","UL":"j","UU":"q","UD":"k"
-  };
-  const suitMap = { "U":"s","R":"h","D":"c","L":"d" };
-  return valueMap[a+b] && suitMap[c]
-    ? valueMap[a+b] + suitMap[c]
-    : null;
-}
+        // Preparar a próxima transição
+        setTimeout(() => {
+            // Atualizar índices
+            state.currentIndex = (state.currentIndex + 1) % CONFIG.cards.length;
+            
+            // A carta de fundo vira a principal sem flicker
+            DOM.currentCard.src = DOM.nextCard.src;
+            
+            // Prepara a imagem da nova carta que ficará no fundo (ainda invisível)
+            const futureIndex = (state.currentIndex + 1) % CONFIG.cards.length;
+            DOM.nextCard.src = `${CONFIG.cardPath}${CONFIG.cards[futureIndex]}`;
+            
+            // Remover classe de animação e o elemento clonado
+            fallingElement.remove();
+            state.isAnimating = false;
+        }, CONFIG.animationDuration);
+    };
 
-document.addEventListener("touchstart", e => {
-  if (running || awaitingRetry) return;
-  sx = e.touches[0].clientX;
-  sy = e.touches[0].clientY;
-}, { passive:true });
+    const applyDeckImpact = () => {
+        // Efeito visual de compressão do maço
+        DOM.deck.style.transition = 'transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        DOM.deck.style.transform = 'rotateY(-20deg) rotateX(10deg) scale(0.96) translateZ(-10px)';
+        
+        setTimeout(() => {
+            DOM.deck.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            DOM.deck.style.transform = 'rotateY(-20deg) rotateX(10deg) scale(1) translateZ(0)';
+        }, 150);
+    };
 
-document.addEventListener("touchend", e => {
-  if (running || awaitingRetry) return;
+    // ==========================================
+    // 5. SISTEMA DE GESTOS (SWIPE & TOUCH)
+    // ==========================================
+    const registerEventListeners = () => {
+        // Clique mouse
+        DOM.deck.addEventListener('mousedown', (e) => {
+            if (e.button === 0) triggerCardFall();
+        });
 
-  const dx = e.changedTouches[0].clientX - sx;
-  const dy = e.changedTouches[0].clientY - sy;
+        // Suporte Touch
+        DOM.deck.addEventListener('touchstart', handleTouchStart, { passive: true });
+        DOM.deck.addEventListener('touchend', handleTouchEnd, { passive: true });
+        
+        // Atalhos de teclado (Espaço ou Seta para baixo)
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowDown') {
+                e.preventDefault();
+                triggerCardFall();
+            }
+        });
 
-  if (Math.abs(dx) >= SWIPE_MIN || Math.abs(dy) >= SWIPE_MIN) {
-    swipeBuffer.push(Math.abs(dx) > Math.abs(dy)
-      ? dx > 0 ? "R" : "L"
-      : dy > 0 ? "D" : "U"
-    );
+        // Resize handler para manter a proporção
+        window.addEventListener('resize', debounce(() => {
+            console.log("Ajustando perspectiva para novo tamanho de janela.");
+        }, 250));
+    };
 
-    if (swipeBuffer.length === 3) {
-      const card = decodeSwipe(swipeBuffer);
-      swipeBuffer = [];
-      if (card) {
-        forcedOverride = card;
-        forcedRunsLeft = 2;
-        showIndicatorStealth(card.toUpperCase());
-      }
+    const handleTouchStart = (e) => {
+        state.touchStartX = e.touches[0].clientX;
+        state.touchStartY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e) => {
+        const deltaY = state.touchStartY - e.changedTouches[0].clientY;
+        const deltaX = state.touchStartX - e.changedTouches[0].clientX;
+
+        // Se o movimento vertical foi significativo (arrastou para cima ou baixo)
+        if (Math.abs(deltaY) > 40 || Math.abs(deltaX) > 40) {
+            triggerCardFall();
+        }
+    };
+
+    // ==========================================
+    // 6. EFEITOS VISUAIS EXTRAS (IDLE ANIMATION)
+    // ==========================================
+    const idleAnimationLoop = (time) => {
+        if (!state.isAnimating) {
+            // Pequena flutuação para o baralho não parecer estático
+            const floatX = Math.sin(time / 1000) * 0.5;
+            const floatY = Math.cos(time / 1200) * 0.5;
+            
+            // Mantém a rotação base mas adiciona o movimento suave
+            DOM.deck.style.transform = `
+                rotateY(${-20 + floatX}deg) 
+                rotateX(${10 + floatY}deg)
+            `;
+        }
+        requestAnimationFrame(idleAnimationLoop);
+    };
+
+    // ==========================================
+    // 7. UTILITÁRIOS (HELPERS)
+    // ==========================================
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
     }
 
-    suppressClickUntil = Date.now() + 450;
-    return;
-  }
+    /**
+     * Simula a textura de bordas de papel variando ligeiramente
+     * as cores das sombras do maço programaticamente.
+     */
+    const generateDynamicDepth = () => {
+        const depthElement = document.querySelector('.deck-depth');
+        if (!depthElement) return;
 
-  if (Date.now() < suppressClickUntil) return;
-  startDeck();
-});
+        let shadowString = "";
+        for (let i = 1; i <= 15; i++) {
+            const color = 220 - (i * 3);
+            shadowString += `${i}px ${i}px 0px rgb(${color}, ${color}, ${color})${i === 15 ? "" : ", "}`;
+        }
+        // Aplicar via JS para garantir precisão
+        DOM.deck.style.boxShadow = `${shadowString}, 15px 15px 30px rgba(0,0,0,0.3)`;
+    };
 
-deckEl.addEventListener("click", () => {
-  if (Date.now() < suppressClickUntil) return;
-  if (!awaitingRetry) startDeck();
-});
+    // Executar profundidade dinâmica
+    generateDynamicDepth();
 
+    // Iniciar tudo
+    init();
 
+    // Expor função para controle externo via console se necessário
+    window.BlaineDeck = {
+        next: triggerCardFall,
+        status: () => state
+    };
 
+})();
+
+/**
+ * NOTA TÉCNICA:
+ * Este script utiliza um IIFE (Immediately Invoked Function Expression) para evitar
+ * poluição do escopo global. A lógica de "clonagem" de nós garante que a animação
+ * CSS @keyframes seja executada de forma independente do estado da imagem principal,
+ * permitindo transições rápidas e sem "pulos" visuais.
+ */
