@@ -120,7 +120,7 @@ deckEl.appendChild(retryBtn);
 
 function showRetryOnly() {
   awaitingRetry = true;
-  cardImg.style.opacity = "0";
+  cardImg.style.opacity = "0.88";
   retryBtn.style.display = "block";
   requestAnimationFrame(() => retryBtn.style.opacity = "1");
 }
@@ -260,3 +260,4 @@ deckEl.addEventListener("click", () => {
   if (Date.now() < suppressClickUntil) return;
   if (!awaitingRetry) startDeck();
 });
+
