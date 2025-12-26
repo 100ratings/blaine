@@ -33,11 +33,16 @@ body {
 }
 
 #card {
+  position: relative;
   width: 100%;
   height: 100%;
   object-fit: cover;
+
   border-radius: 14px;
-  box-shadow: 0 18px 45px rgba(0,0,0,0.75);
+
+  /* sombra principal (frente) */
+  box-shadow:
+    0 18px 45px rgba(0,0,0,0.75);
 
   transform: translateY(0);
   opacity: 1;
@@ -47,7 +52,45 @@ body {
     opacity 0.14s ease;
 }
 
-/* indicador stealth */
+/* ===============================
+   PROFUNDIDADE — ESPESSURA DO BARALHO
+   =============================== */
+
+#card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -8px;
+  width: 8px;
+  height: 100%;
+
+  /* micro-linhas simulando cartas empilhadas */
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.35) 0px,
+      rgba(255,255,255,0.35) 1px,
+      rgba(0,0,0,0.18) 2px,
+      rgba(0,0,0,0.18) 3px
+    );
+
+  /* cantos contínuos pela profundidade */
+  border-radius: 0 14px 14px 0;
+
+  /* luz morrendo na lateral */
+  box-shadow:
+    inset -6px 0 8px rgba(0,0,0,0.28);
+
+  /* reduz contraste pra não chamar atenção */
+  filter: brightness(0.92);
+
+  pointer-events: none;
+}
+
+/* ===============================
+   INDICADOR STEALTH
+   =============================== */
+
 #swipe-indicator {
   position: fixed;
   left: 50%;
@@ -69,5 +112,3 @@ body {
   pointer-events: none;
   transition: opacity 0.18s ease;
 }
-
-
