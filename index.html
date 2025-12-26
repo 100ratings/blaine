@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Blaine Deck</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -14,11 +14,11 @@
     </div>
   </div>
 
-  <!-- indicador sutil (só a carta) -->
   <div id="swipe-indicator" aria-hidden="true"></div>
 
-  <!-- tela de “tentar de novo” -->
-  <div id="try-again" aria-hidden="true">Tentar de novo</div>
+  <div id="try-again" class="hidden" aria-hidden="true">
+    <div class="pill">Tentar de novo</div>
+  </div>
 
   <script src="script.js"></script>
 </body>
