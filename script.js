@@ -78,6 +78,23 @@ function showIndicator(text, ok = true) {
 }
 
 // ===============================
+// HELPERS DE TRANSFORM (mantém a mesma animação)
+// ===============================
+function setCardTransform(y, x = 0) {
+  // Mantém os mesmos valores de Y (-6 / 22), apenas adiciona X quando necessário (peek)
+  cardImg.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+}
+
+// ===============================
+// PEEK (canônico): desloca levemente pra direita e some rápido
+// - não altera timing do baralho
+// - some e fica invisível até a próxima carta entrar
+// ===============================
+const PEEK_X = 18;        // leve deslocamento p/ direita
+const PEEK_HIDE_MS = 110; // some rápido
+let pendingPeekRestore = false;
+
+// ===============================
 // ANIMAÇÃO DO BARALHO
 // ===============================
 function runDeck() {
@@ -90,7 +107,7 @@ function runDeck() {
     setTimeout(() => {
       cardImg.src = "cards/as.png";
       cardImg.style.opacity = 1;
-      cardImg.style.transform = "translateY(-6px)";
+      setCardTransform(-6, 0);
     }, 120);
 
     return;
@@ -98,11 +115,36 @@ function runDeck() {
 
   const currentCard = sequence[index];
 
-  cardImg.style.transform = "translateY(22px)";
+  // movimento "pra baixo" (igual ao original)
+  setCardTransform(22, 0);
 
   timer = setTimeout(() => {
+    // Se o peek deixou invisível, só voltamos a opacidade no momento do swap
+    // (pra não “reaparecer” a carta forçada antes da próxima entrar)
+    if (pendingPeekRestore) {
+      cardImg.style.opacity = 1;
+      pendingPeekRestore = false;
+    }
+
     cardImg.src = `cards/${currentCard}.png`;
-    cardImg.style.transform = "translateY(-6px)";
+
+    // settle (igual ao original), com exceção do peek na carta forçada
+    if (currentCard === forceThisRun) {
+      // desloca pra direita (peek)
+      setCardTransform(-6, PEEK_X);
+      cardImg.style.opacity = 1;
+
+      // some rapidamente
+      setTimeout(() => {
+        if (!running) return;
+        // some e fica invisível até o próximo swap
+        cardImg.style.opacity = 0;
+        pendingPeekRestore = true;
+      }, PEEK_HIDE_MS);
+    } else {
+      setCardTransform(-6, 0);
+    }
+
     index++;
   }, 20);
 
@@ -135,8 +177,10 @@ function startDeck() {
     forceThisRun = getRandomCard();
   }
 
+  pendingPeekRestore = false;
+
   cardImg.style.opacity = 1;
-  cardImg.style.transform = "translateY(-6px)";
+  setCardTransform(-6, 0);
   cardImg.src = "cards/as.png";
 
   sequence = prepareDeck(forceThisRun);
