@@ -3,7 +3,7 @@
 // ===============================
 
 // Quantas cartas aparecem no total (inclui a forçada)
-const CARDS_TO_SHOW = 18;
+const CARDS_TO_SHOW = 25;
 
 // ===============================
 // BARALHO — MNEMONICA ROTACIONADA
@@ -260,5 +260,6 @@ deckEl.addEventListener("click", () => {
   if (Date.now() < suppressClickUntil) return;
   if (!awaitingRetry) startDeck();
 });
+
 
 
