@@ -12,7 +12,6 @@ body {
   justify-content: center;
   overflow: hidden;
 
-  /* ajuda no iPhone */
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -39,11 +38,16 @@ body {
   object-fit: cover;
   border-radius: 14px;
   box-shadow: 0 18px 45px rgba(0,0,0,0.75);
-  transform: translateY(-6px);
-  transition: transform 0.08s linear, opacity 0.12s linear;
+
+  transform: translateY(0);
+  opacity: 1;
+
+  transition:
+    transform 0.18s cubic-bezier(.22,.61,.36,1),
+    opacity 0.14s ease;
 }
 
-/* indicador de swipe (debug / confirmação) */
+/* indicador stealth */
 #swipe-indicator {
   position: fixed;
   left: 50%;
@@ -53,9 +57,8 @@ body {
   padding: 8px 10px;
   border-radius: 10px;
 
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 13px;
-  letter-spacing: 0.2px;
 
   color: rgba(255,255,255,0.92);
   background: rgba(0,0,0,0.55);
@@ -66,16 +69,3 @@ body {
   pointer-events: none;
   transition: opacity 0.18s ease;
 }
-
-#swipe-indicator.show {
-  opacity: 1;
-}
-
-#swipe-indicator.ok {
-  color: rgba(120, 255, 170, 0.95);
-}
-
-#swipe-indicator.bad {
-  color: rgba(255, 140, 140, 0.95);
-}
-
