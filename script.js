@@ -8,11 +8,11 @@ const deck = [
   "ac","9c","js","qd","7d","qs","xd","6c","ah","9d","4c","2h",
   "7c","3c","4h","6d"
 ];
-
+​
 const deckEl = document.getElementById("deck");
 const cardImg = document.getElementById("card");
 const indicator = document.getElementById("swipe-indicator");
-
+​
 // ===============================
 // FORCE STATE
 // - por padrão: aleatório toda rodada
@@ -21,23 +21,23 @@ const indicator = document.getElementById("swipe-indicator");
 let forcedOverride = null;
 let forcedRunsLeft = 0;
 let forceThisRun = null;
-
+​
 // ===============================
 const SPEED_START = 60;
-const SPEED_FORCE = 2000; // segura ~2s na carta forçada (sem deslocar/fade)
+const SPEED_FORCE = 700; // ↓ diminuiu (segura menos tempo na carta forçada)
 const SPEED_END   = 30;
-
+​
 // ===============================
 let sequence = [];
 let index = 0;
 let running = false;
 let timer = null;
-
+​
 // ===============================
 // ESTADO "TENTAR DE NOVO"
 // ===============================
 let awaitingRetry = false;
-
+​
 // ===============================
 // PRÉ-CARREGAMENTO (evita travada inicial)
 // ===============================
@@ -45,43 +45,80 @@ deck.forEach(c => {
   const img = new Image();
   img.src = `cards/${c}.png`;
 });
-
+​
 // ===============================
 function getRandomCard() {
   return deck[Math.floor(Math.random() * deck.length)];
 }
-
+​
 function prepareDeck(force) {
   let temp = deck.filter(c => c !== force);
   let middle = Math.floor(temp.length / 2);
   temp.splice(middle, 0, force);
   return temp;
 }
-
+​
 function clearTimer() {
   if (timer) {
     clearTimeout(timer);
     timer = null;
   }
 }
-
+​
 // ===============================
-// INDICADOR
+// INDICADOR (STEALTH)
+// - nada de verde / quadrado / bolinhas
+// - mostra SOMENTE a carta após completar o swipe
+// - fica mais pra direita
 // ===============================
 let indicatorTimeout = null;
-
-function showIndicator(text, ok = true) {
-  if (indicatorTimeout) clearTimeout(indicatorTimeout);
-
-  indicator.textContent = text;
-  indicator.classList.remove("ok", "bad");
-  indicator.classList.add("show", ok ? "ok" : "bad");
-
-  indicatorTimeout = setTimeout(() => {
-    indicator.classList.remove("show", "ok", "bad");
-  }, 1400);
+let indicatorStyled = false;
+​
+function styleIndicatorOnce() {
+  if (indicatorStyled || !indicator) return;
+  indicatorStyled = true;
+​
+  Object.assign(indicator.style, {
+    position: "fixed",
+    right: "18px",
+    left: "auto",
+    top: "50%",
+    transform: "translateY(-50%)",
+    zIndex: "9999",
+    background: "transparent",
+    border: "0",
+    boxShadow: "none",
+    padding: "0",
+    margin: "0",
+    borderRadius: "0",
+    color: "rgba(255,255,255,0.55)",
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+    fontSize: "14px",
+    fontWeight: "700",
+    letterSpacing: "0.2px",
+    textShadow: "0 2px 12px rgba(0,0,0,0.75)",
+    pointerEvents: "none",
+    opacity: "0",
+    transition: "opacity 0.12s ease",
+    userSelect: "none",
+    WebkitUserSelect: "none",
+  });
 }
-
+​
+function showIndicatorStealth(text) {
+  if (!indicator) return;
+  styleIndicatorOnce();
+​
+  if (indicatorTimeout) clearTimeout(indicatorTimeout);
+  indicator.textContent = text;
+  indicator.style.opacity = "1";
+​
+  // bem rápido e discreto
+  indicatorTimeout = setTimeout(() => {
+    indicator.style.opacity = "0";
+  }, 520);
+}
+​
 // ===============================
 // BOTÃO "TENTAR DE NOVO" (via JS; sem mexer em HTML/CSS)
 // ===============================
@@ -89,7 +126,7 @@ const retryBtn = document.createElement("button");
 retryBtn.type = "button";
 retryBtn.textContent = "Tentar de novo";
 retryBtn.setAttribute("aria-label", "Tentar de novo");
-
+​
 Object.assign(retryBtn.style, {
   position: "absolute",
   left: "50%",
@@ -114,87 +151,87 @@ Object.assign(retryBtn.style, {
   userSelect: "none",
   WebkitUserSelect: "none",
 });
-
+​
 deckEl.appendChild(retryBtn);
-
+​
 function showRetryOnly() {
   awaitingRetry = true;
-
-  // some “todas as cartas” (na prática: esconde a carta)
   cardImg.style.opacity = 0;
-
+​
   retryBtn.style.display = "block";
   requestAnimationFrame(() => {
     retryBtn.style.opacity = "1";
   });
 }
-
+​
 function hideRetryAndResetToAce() {
   awaitingRetry = false;
-
+​
   retryBtn.style.opacity = "0";
   setTimeout(() => {
     retryBtn.style.display = "none";
   }, 200);
-
+​
   cardImg.src = "cards/as.png";
   cardImg.style.opacity = 1;
   cardImg.style.transform = "translateY(-6px)";
 }
-
+​
 retryBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   suppressClickUntil = Date.now() + 450;
+​
+  // ao clicar: já roda de novo (não espera tap no Ás)
   hideRetryAndResetToAce();
+  setTimeout(() => startDeck(), 60);
 });
-
+​
 // ===============================
 // ANIMAÇÃO DO BARALHO
 // ===============================
 function runDeck() {
   if (!running) return;
-
+​
   if (index >= sequence.length) {
     running = false;
     clearTimer();
-
-    // no final: some tudo e mostra só o botão, esperando toque
+​
     setTimeout(() => {
       showRetryOnly();
     }, 120);
-
+​
     return;
   }
-
+​
   const currentCard = sequence[index];
-
+​
   cardImg.style.transform = "translateY(22px)";
-
+​
   timer = setTimeout(() => {
     cardImg.src = `cards/${currentCard}.png`;
     cardImg.style.transform = "translateY(-6px)";
     index++;
   }, 20);
-
+​
   let delay = SPEED_START;
-
+​
   if (currentCard === forceThisRun) {
-    delay = SPEED_FORCE; // pausa ~2s na carta forçada (sem efeito visual)
+    delay = SPEED_FORCE;
   } else if (index > sequence.length * 0.65) {
     delay = SPEED_END;
   }
-
+​
   timer = setTimeout(runDeck, delay);
 }
-
+​
 function startDeck() {
   if (running) return;
   if (awaitingRetry) return;
-
+​
   clearTimer();
   running = true;
   index = 0;
-
+​
   // decide a carta forçada desta rodada
   if (forcedRunsLeft > 0 && forcedOverride) {
     forceThisRun = forcedOverride;
@@ -205,50 +242,50 @@ function startDeck() {
   } else {
     forceThisRun = getRandomCard();
   }
-
+​
   cardImg.style.opacity = 1;
   cardImg.style.transform = "translateY(-6px)";
   cardImg.src = "cards/as.png";
-
+​
   sequence = prepareDeck(forceThisRun);
   timer = setTimeout(runDeck, 140);
 }
-
+​
 // ===============================
 // SWIPE INPUT (3 gestos)
 // - swipe NÃO inicia o baralho
+// - após 3 swipes: mostra SÓ a carta (stealth) e seta force por 2 rodadas
 // - tap NO BARALHO inicia
 // ===============================
 const SWIPE_MIN = 42;
-
+​
 let sx = 0, sy = 0;
 let touchStartTarget = null;
 let suppressClickUntil = 0;
-
+​
 let swipeBuffer = [];
-
+​
 function resetSwipeBuffer() {
   swipeBuffer = [];
 }
-
+​
 function prettyCard(code) {
-  // code: "qh", "as", "8c" etc
   const v = code.slice(0, -1);
   const s = code.slice(-1);
-
+​
   const value = (v === "a") ? "A" :
                 (v === "x") ? "10" :
                 (v === "j") ? "J" :
                 (v === "q") ? "Q" :
                 (v === "k") ? "K" : v;
-
+​
   const suit = (s === "s") ? "♠" :
                (s === "h") ? "♥" :
                (s === "c") ? "♣" : "♦";
-
+​
   return `${value}${suit}`;
 }
-
+​
 function decodeSwipe([a, b, c]) {
   const valueMap = {
     "UR":"a",
@@ -265,88 +302,81 @@ function decodeSwipe([a, b, c]) {
     "UU":"q",
     "UD":"k"
   };
-
+​
   const suitMap = {
     "U":"s",
     "R":"h",
     "D":"c",
     "L":"d"
   };
-
+​
   const value = valueMap[a + b];
   const suit = suitMap[c];
-
+​
   if (!value || !suit) return null;
   return value + suit;
 }
-
+​
 document.addEventListener("touchstart", (e) => {
   if (running) return;
   if (awaitingRetry) return;
-
+​
   sx = e.touches[0].clientX;
   sy = e.touches[0].clientY;
   touchStartTarget = e.target;
 }, { passive: true });
-
+​
 document.addEventListener("touchend", (e) => {
   if (running) return;
   if (awaitingRetry) return;
-
+​
   const ex = e.changedTouches[0].clientX;
   const ey = e.changedTouches[0].clientY;
-
+​
   const dx = ex - sx;
   const dy = ey - sy;
-
+​
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
-
+​
   const isSwipe = (absX >= SWIPE_MIN || absY >= SWIPE_MIN);
-
+​
   if (isSwipe) {
-    // define direção
     let dir;
     if (absX > absY) dir = dx > 0 ? "R" : "L";
     else dir = dy > 0 ? "D" : "U";
-
+​
     swipeBuffer.push(dir);
-
-    // feedback parcial (sutil; sem setas)
-    if (swipeBuffer.length < 3) {
-      showIndicator("•".repeat(swipeBuffer.length), true);
-    }
-
-    // no 3º swipe, decodifica
+​
+    // só no 3º swipe: confirma (stealth) mostrando a carta
     if (swipeBuffer.length === 3) {
       const card = decodeSwipe(swipeBuffer);
       resetSwipeBuffer();
-
+​
       if (card) {
         forcedOverride = card;
         forcedRunsLeft = 2;
-        showIndicator(prettyCard(card), true); // só a carta, sem setas
+        showIndicatorStealth(prettyCard(card)); // só a carta, bem discreto
       } else {
-        showIndicator("inválido", false);
+        showIndicatorStealth(" "); // falha silenciosa (quase invisível)
       }
     }
-
-    // evita que o "click" fantasma do iOS dispare start
+​
     suppressClickUntil = Date.now() + 450;
     return;
   }
-
+​
   // TAP (sem swipe): só inicia se foi em cima do baralho
   const now = Date.now();
   if (now < suppressClickUntil) return;
-
+​
   const tappedDeck = deckEl.contains(touchStartTarget);
   if (tappedDeck) {
-    suppressClickUntil = Date.now() + 450; // evita click duplicado
+    suppressClickUntil = Date.now() + 450;
     startDeck();
   }
 }, { passive: true });
-
+​
 // Desktop: click no baralho inicia
 deckEl.addEventListener("click", () => {
   const now = Date.now();
