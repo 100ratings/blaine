@@ -1,121 +1,93 @@
-* {
+/* Reset básico para garantir que o baralho seja o centro das atenções */
+body {
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  background: #000;
-  height: 100vh;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f0f0f0; /* Fundo neutro para destacar o baralho */
   overflow: hidden;
-
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
+  font-family: sans-serif;
 }
 
+/* O 'stage' define a profundidade da cena */
 #stage {
-  width: 78vw;
-  max-width: 360px;
-  aspect-ratio: 2.5 / 3.5;
+  perspective: 1500px;
+  width: 100%;
+  height: 100%;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
 }
 
+/* O 'deck' é o bloco sólido de cartas */
 #deck {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: 320px; /* Largura padrão de carta */
+  height: 450px;
+  background: white;
+  border-radius: 15px;
+  transform-style: preserve-3d;
+  
+  /* Inclinação para revelar a profundidade lateral (como na foto) */
+  transform: rotateY(-20deg) rotateX(10deg);
+  
+  /* O box-shadow cria o efeito de 'muitas cartas' nas bordas lateral e inferior */
+  box-shadow: 
+    1px 1px 0px #e0e0e0,
+    2px 2px 0px #dcdcdc,
+    3px 3px 0px #d8d8d8,
+    4px 4px 0px #d4d4d4,
+    5px 5px 0px #d0d0d0,
+    6px 6px 0px #cccccc,
+    7px 7px 0px #c8c8c8,
+    8px 8px 0px #c4c4c4,
+    9px 9px 0px #c0c0c0,
+    10px 10px 0px #bcbcbc,
+    11px 11px 0px #b8b8b8,
+    12px 12px 0px #b4b4b4,
+    13px 13px 20px rgba(0,0,0,0.4); /* Sombra suave no chão */
 }
 
-/* ===============================
-   STACK DE CARTAS (ATRÁS)
-   =============================== */
-
-#deck::before {
-  content: "";
+/* Recipiente para a carta do topo que irá animar */
+#card-container {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  right: -7px;
-  bottom: -7px;
-
-  /* linhas horizontais simulando cartas empilhadas */
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      rgba(255,255,255,0.32) 0px,
-      rgba(255,255,255,0.32) 1px,
-      rgba(0,0,0,0.18) 2px,
-      rgba(0,0,0,0.18) 3px
-    );
-
-  border-radius: 16px;
-
-  /* luz morre para trás */
-  box-shadow:
-    inset -8px 0 10px rgba(0,0,0,0.35),
-    inset 0 -8px 10px rgba(0,0,0,0.25);
-
-  filter: brightness(0.88);
-
-  pointer-events: none;
-}
-
-/* ===============================
-   CARTA (LIMPA, NA FRENTE)
-   =============================== */
-
-#card {
-  position: relative;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-
-  border-radius: 14px;
-
-  background: #fff;
-
-  /* sombra real da carta */
-  box-shadow:
-    0 18px 45px rgba(0,0,0,0.75);
-
-  transform: translateY(0);
-  opacity: 1;
-
-  transition:
-    transform 0.18s cubic-bezier(.22,.61,.36,1),
-    opacity 0.14s ease;
-
-  z-index: 2;
+  top: 0;
+  left: 0;
+  transform-style: preserve-3d;
+  z-index: 20;
 }
 
-/* ===============================
-   INDICADOR STEALTH
-   =============================== */
+/* A carta em si */
+#card {
+  width: 100%;
+  height: 100%;
+  border-radius: 15px;
+  object-fit: cover;
+  display: block;
+  background-color: white;
+  /* Transição suave para a animação */
+  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s;
+  backface-visibility: hidden;
+}
 
-#swipe-indicator {
-  position: fixed;
-  left: 50%;
-  bottom: 6px;
-  transform: translateX(-50%);
-
-  padding: 8px 10px;
-  border-radius: 10px;
-
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 13px;
-
-  color: rgba(255,255,255,0.92);
-  background: rgba(0,0,0,0.55);
-  border: 1px solid rgba(255,255,255,0.12);
-  backdrop-filter: blur(6px);
-
+/* Classe de animação: Cair para frente */
+/* Ela gira no eixo X para 'tombar' e desce no Y */
+.falling {
+  transform: rotateX(-110deg) translateY(100px) translateZ(150px) !important;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.18s ease;
+}
+
+/* Indicador visual de swipe (opcional) */
+#swipe-indicator {
+  position: absolute;
+  bottom: 20px;
+  width: 50px;
+  height: 5px;
+  background: rgba(0,0,0,0.1);
+  border-radius: 10px;
 }
