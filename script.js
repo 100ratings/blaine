@@ -22,19 +22,17 @@ let forcedOverride = null;
 let forcedRunsLeft = 0;
 
 // ===============================
-// ANIMAÇÃO (cai pra frente)
+// ANIMAÇÃO (opção 1: leve + fluida)
 // ===============================
-// 0deg = face reta; ~78deg = quase “em pé”, parece caindo pra frente
-const EDGE_T = "translateY(-6px) rotateX(78deg)";
-const FACE_T = "translateY(-6px) rotateX(0deg)";
+const DOWN_T = "translateY(18px) scale(0.985)";
+const UP_T   = "translateY(-6px) scale(1)";
 
-const CLOSE_DUR = 70;       // fechar (voltar pra inclinado)
-const OPEN_DUR  = 140;      // cair pra frente
-const OPEN_DUR_FORCE = 220; // cair mais gostoso no force
+const DOWN_DUR = 70;   // vai “pra frente”
+const UP_DUR   = 90;   // volta “pro lugar”
+const FORCE_PAUSE = 520;
 
-const BASE_DELAY  = 170;    // ritmo normal
-const END_DELAY   = 120;    // acelera no final
-const FORCE_DELAY = 520;    // pausa no force
+const BASE_DELAY = 150;
+const END_DELAY  = 110;
 
 // ===============================
 let sequence = [];
@@ -78,107 +76,19 @@ function clearTimer() {
 }
 
 // ===============================
-// INDICADOR
+// INDICADOR (só a carta, bem sutil)
 // ===============================
 let indicatorTimeout = null;
 
-function showIndicator(text, ok = true) {
+function showCardIndicator(cardPretty) {
   if (indicatorTimeout) clearTimeout(indicatorTimeout);
 
-  indicator.textContent = text;
-  indicator.classList.remove("ok", "bad");
-  indicator.classList.add("show", ok ? "ok" : "bad");
+  indicator.textContent = cardPretty;
+  indicator.classList.add("show");
 
   indicatorTimeout = setTimeout(() => {
-    indicator.classList.remove("show", "ok", "bad");
-  }, 1200);
-}
-
-// ===============================
-// ANIMAÇÃO POR CARTA: inclina → troca → cai pra frente
-// ===============================
-function animateToCard(cardCode, isForceStep) {
-  cardImg.style.setProperty("--dur", `${CLOSE_DUR}ms`);
-  cardImg.style.transform = EDGE_T;
-
-  setTimeout(() => {
-    cardImg.src = `cards/${cardCode}.png`;
-
-    const open = isForceStep ? OPEN_DUR_FORCE : OPEN_DUR;
-    cardImg.style.setProperty("--dur", `${open}ms`);
-    cardImg.style.transform = FACE_T;
-  }, CLOSE_DUR);
-}
-
-// FINAL: fecha pra não entregar a última, troca pra A♠, abre
-function resetToAce() {
-  cardImg.style.setProperty("--dur", `${CLOSE_DUR}ms`);
-  cardImg.style.transform = EDGE_T;
-
-  setTimeout(() => {
-    cardImg.src = "cards/as.png";
-    cardImg.style.setProperty("--dur", `${OPEN_DUR}ms`);
-    cardImg.style.transform = FACE_T;
-  }, CLOSE_DUR);
-}
-
-// ===============================
-function runDeck() {
-  if (!running) return;
-
-  if (index >= sequence.length) {
-    running = false;
-    clearTimer();
-    resetToAce();
-    return;
-  }
-
-  const currentCard = sequence[index];
-  const isForceStep = (currentCard === forceThisRun);
-
-  animateToCard(currentCard, isForceStep);
-  index++;
-
-  let delay = BASE_DELAY;
-  if (isForceStep) delay = FORCE_DELAY;
-  else if (index > sequence.length * 0.65) delay = END_DELAY;
-
-  const minDelay = CLOSE_DUR + (isForceStep ? OPEN_DUR_FORCE : OPEN_DUR) + 18;
-  delay = Math.max(delay, minDelay);
-
-  timer = setTimeout(runDeck, delay);
-}
-
-function startDeck() {
-  if (running) return;
-
-  clearTimer();
-  running = true;
-  index = 0;
-
-  forceThisRun = pickForceForRun();
-  sequence = prepareDeck(forceThisRun);
-
-  // entra “inclinado” antes de começar
-  cardImg.style.setProperty("--dur", `${CLOSE_DUR}ms`);
-  cardImg.style.transform = EDGE_T;
-
-  timer = setTimeout(runDeck, 90);
-}
-
-// ===============================
-// SWIPE INPUT (3 gestos) — NÃO inicia
-// TAP no baralho inicia
-// ===============================
-const SWIPE_MIN = 42;
-
-let sx = 0, sy = 0;
-let touchStartTarget = null;
-let suppressClickUntil = 0;
-let swipeBuffer = [];
-
-function dirToArrow(d) {
-  return d === "U" ? "↑" : d === "R" ? "→" : d === "D" ? "↓" : "←";
+    indicator.classList.remove("show");
+  }, 650);
 }
 
 function prettyCard(code) {
@@ -198,7 +108,95 @@ function prettyCard(code) {
   return `${value}${suit}`;
 }
 
+// ===============================
+// ANIMAÇÃO POR CARTA: desce → troca → sobe
+// (troca no pico do movimento)
+// ===============================
+function animateToCard(cardCode) {
+  // fase 1: desce (sensação de “passar carta”)
+  cardImg.style.transition = `transform ${DOWN_DUR}ms linear`;
+  cardImg.style.transform = DOWN_T;
+
+  setTimeout(() => {
+    // troca no pico
+    cardImg.src = `cards/${cardCode}.png`;
+
+    // fase 2: sobe (assenta)
+    cardImg.style.transition = `transform ${UP_DUR}ms cubic-bezier(.22,.61,.36,1)`;
+    cardImg.style.transform = UP_T;
+  }, DOWN_DUR);
+}
+
+// FINAL: “fecha” sem entregar a última
+function resetToAce() {
+  cardImg.style.transition = `transform ${DOWN_DUR}ms linear`;
+  cardImg.style.transform = DOWN_T;
+
+  setTimeout(() => {
+    cardImg.src = "cards/as.png";
+    cardImg.style.transition = `transform ${UP_DUR}ms cubic-bezier(.22,.61,.36,1)`;
+    cardImg.style.transform = UP_T;
+  }, DOWN_DUR);
+}
+
+// ===============================
+function runDeck() {
+  if (!running) return;
+
+  if (index >= sequence.length) {
+    running = false;
+    clearTimer();
+    resetToAce();
+    return;
+  }
+
+  const currentCard = sequence[index];
+  const isForceStep = (currentCard === forceThisRun);
+
+  animateToCard(currentCard);
+  index++;
+
+  let delay = BASE_DELAY;
+  if (isForceStep) delay = FORCE_PAUSE;
+  else if (index > sequence.length * 0.65) delay = END_DELAY;
+
+  // garante que a animação termina antes de disparar próxima
+  const minDelay = DOWN_DUR + UP_DUR + 18;
+  delay = Math.max(delay, minDelay);
+
+  timer = setTimeout(runDeck, delay);
+}
+
+function startDeck() {
+  if (running) return;
+
+  clearTimer();
+  running = true;
+  index = 0;
+
+  forceThisRun = pickForceForRun();
+  sequence = prepareDeck(forceThisRun);
+
+  // garante estado inicial bonito
+  cardImg.style.transition = `transform ${UP_DUR}ms cubic-bezier(.22,.61,.36,1)`;
+  cardImg.style.transform = UP_T;
+
+  timer = setTimeout(runDeck, 90);
+}
+
+// ===============================
+// SWIPE INPUT (3 gestos) — NÃO inicia
+// TAP no baralho inicia
+// ===============================
+const SWIPE_MIN = 42;
+
+let sx = 0, sy = 0;
+let touchStartTarget = null;
+let suppressClickUntil = 0;
+let swipeBuffer = [];
+
 function decodeSwipe([a, b, c]) {
+  // 2 swipes = valor; 3º swipe = naipe
   const valueMap = {
     "UR":"a",
     "RU":"2",
@@ -256,21 +254,14 @@ document.addEventListener("touchend", (e) => {
 
     swipeBuffer.push(dir);
 
-    if (swipeBuffer.length < 3) {
-      showIndicator(swipeBuffer.map(dirToArrow).join(" "), true);
-    }
-
     if (swipeBuffer.length === 3) {
-      const arrows = swipeBuffer.map(dirToArrow).join(" ");
       const card = decodeSwipe(swipeBuffer);
       swipeBuffer = [];
 
       if (card) {
         forcedOverride = card;
         forcedRunsLeft = 2;
-        showIndicator(`${arrows}  →  ${prettyCard(card)}`, true);
-      } else {
-        showIndicator(`${arrows}  →  inválido`, false);
+        showCardIndicator(prettyCard(card));
       }
     }
 
