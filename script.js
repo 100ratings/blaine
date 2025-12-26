@@ -23,9 +23,9 @@ let forcedRunsLeft = 0;
 let forceThisRun = null;
 
 // ===============================
-const SPEED_START = 60;
-const SPEED_FORCE = 420;
-const SPEED_END   = 30;
+const SPEED_START = 50;
+const SPEED_FORCE = 220;
+const SPEED_END   = 20;
 
 // Quanto tempo a ÚLTIMA carta fica na tela antes de sumir pro "Tentar de novo"
 const LAST_CARD_EXIT_DELAY = SPEED_END;
@@ -83,7 +83,7 @@ function styleIndicatorOnce() {
     position: "fixed",
     right: "10px",
     left: "auto",
-    top: "62%",                 // <-- MAIS PRA BAIXO (ajuste fino aqui)
+    top: "22%",                 // <-- MAIS PRA BAIXO (ajuste fino aqui)
     transform: "translateY(-50%)",
     zIndex: "9999",
     background: "transparent",
@@ -384,3 +384,4 @@ deckEl.addEventListener("click", (e) => {
   if (awaitingRetry) return;
   if (e.target === cardImg) startDeck();
 });
+
