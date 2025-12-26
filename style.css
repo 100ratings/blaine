@@ -1,26 +1,112 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Blaine Deck</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-<body>
-  <div id="stage">
-    <div id="deck">
-      <div class="stack stack-3" aria-hidden="true"></div>
-      <div class="stack stack-2" aria-hidden="true"></div>
-      <div class="stack stack-1" aria-hidden="true"></div>
+:root{
+  --r: 14px;
+}
 
-      <img id="card" src="cards/as.png" alt="card" />
-    </div>
-  </div>
+body {
+  background: #000;
+  min-height: 100svh;
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 
-  <!-- indicador (pra você validar o swipe; depois dá pra ocultar) -->
-  <div id="swipe-indicator" aria-hidden="true"></div>
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
 
-  <script src="script.js"></script>
-</body>
-</html>
+#stage {
+  width: min(88vw, 360px);
+  aspect-ratio: 2.5 / 3.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#deck {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  perspective: 1100px;
+}
+
+/* “baralho cheio” atrás da carta (sutil) */
+#stack{
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r);
+  background: #f6f6f6;
+  border: 1px solid rgba(0,0,0,0.10);
+  transform: translateY(-10px);
+  pointer-events: none;
+  z-index: 0;
+
+  /* camadas em cima, parecendo muitas cartas */
+  box-shadow:
+    0 -3px 0 rgba(246,246,246,0.95),
+    0 -6px 0 rgba(246,246,246,0.75),
+    0 -9px 0 rgba(246,246,246,0.55),
+    0 18px 45px rgba(0,0,0,0.45);
+}
+
+#card {
+  position: relative;
+  z-index: 1;
+
+  width: 100%;
+  height: 100%;
+
+  /* NÃO cortar no iPhone */
+  object-fit: contain;
+  background: #fff;
+
+  border-radius: var(--r);
+  box-shadow: 0 18px 45px rgba(0,0,0,0.75);
+
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+
+  /* queda “pra frente” */
+  transform-origin: 50% 100%;
+
+  /* JS controla duração */
+  --dur: 140ms;
+  transition: transform var(--dur) cubic-bezier(.22,.61,.36,1), opacity 0.12s linear;
+
+  /* estado normal */
+  transform: translateY(-6px) rotateX(0deg);
+  will-change: transform;
+}
+
+/* indicador do swipe */
+#swipe-indicator {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+
+  padding: 8px 10px;
+  border-radius: 10px;
+
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  letter-spacing: 0.2px;
+
+  color: rgba(255,255,255,0.92);
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(6px);
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+#swipe-indicator.show { opacity: 1; }
+#swipe-indicator.ok { color: rgba(120, 255, 170, 0.95); }
+#swipe-indicator.bad { color: rgba(255, 140, 140, 0.95); }
