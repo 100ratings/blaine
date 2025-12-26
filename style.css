@@ -47,7 +47,7 @@ body {
 #swipe-indicator {
   position: fixed;
   left: 50%;
-  bottom: 18px;
+  bottom: 6px;
   transform: translateX(-50%);
 
   padding: 8px 10px;
@@ -78,3 +78,4 @@ body {
 #swipe-indicator.bad {
   color: rgba(255, 140, 140, 0.95);
 }
+
