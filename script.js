@@ -24,8 +24,8 @@ let forceThisRun = null;
 
 // ===============================
 const SPEED_START = 60;
-const SPEED_FORCE = 420;  // pausa do force (no meio)
-const SPEED_END   = 30;   // fim rápido
+const SPEED_FORCE = 320;  // pausa do force (no meio)
+const SPEED_END   = 25;   // fim rápido
 
 // quanto tempo a ÚLTIMA carta fica antes de mostrar "Tentar de novo"
 const LAST_CARD_EXIT_DELAY = SPEED_END;
@@ -394,6 +394,7 @@ deckEl.addEventListener("click", (e) => {
   if (awaitingRetry) return;
   if (e.target === cardImg) startDeck();
 });
+
 
 
 
