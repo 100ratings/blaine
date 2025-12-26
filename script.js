@@ -93,7 +93,7 @@ function styleIndicatorOnce() {
     position: "fixed",
     right: "8px",
     left: "auto",
-    top: "112%",
+    top: "98%",
     transform: "translateY(-50%)",
     zIndex: "9999",
     background: "transparent",
@@ -394,6 +394,7 @@ deckEl.addEventListener("click", (e) => {
   if (awaitingRetry) return;
   if (e.target === cardImg) startDeck();
 });
+
 
 
 
