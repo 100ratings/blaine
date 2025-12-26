@@ -1,4 +1,11 @@
 // ===============================
+// CONFIGURAÇÃO
+// ===============================
+
+// Quantas cartas aparecem no total (inclui a forçada)
+const CARDS_TO_SHOW = 18;
+
+// ===============================
 // BARALHO — MNEMONICA ROTACIONADA
 // ===============================
 const deck = [
@@ -15,31 +22,23 @@ const indicator = document.getElementById("swipe-indicator");
 
 // ===============================
 // FORCE STATE
-// - por padrão: aleatório toda rodada
-// - após swipe: força por 2 rodadas
 // ===============================
 let forcedOverride = null;
 let forcedRunsLeft = 0;
 let forceThisRun = null;
 
 // ===============================
-// VELOCIDADES (sem pausa no force)
+// VELOCIDADES
 // ===============================
 const SPEED_START = 60;
-const SPEED_END   = 40;
-
-// Quanto tempo a ÚLTIMA carta fica na tela antes de aparecer "Tentar de novo"
-const LAST_CARD_EXIT_DELAY = 100; // ~0.12s
+const SPEED_END   = 38;
+const LAST_CARD_EXIT_DELAY = 120;
 
 // ===============================
 let sequence = [];
 let index = 0;
 let running = false;
 let timer = null;
-
-// ===============================
-// ESTADO "TENTAR DE NOVO"
-// ===============================
 let awaitingRetry = false;
 
 // ===============================
@@ -55,14 +54,20 @@ function getRandomCard() {
 }
 
 // ===============================
-// AQUI: force SOMENTE NO FINAL (última carta)
-// - remove a carta do force do resto do deck
-// - coloca o force como última carta
+// PREPARA SEQUÊNCIA (quantidade + force no final)
 // ===============================
 function prepareDeck(force) {
-  const temp = deck.filter(c => c !== force);
-  temp.push(force);
-  return temp;
+  const pool = deck.filter(c => c !== force);
+
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  const slice = pool.slice(0, Math.max(1, CARDS_TO_SHOW - 1));
+  slice.push(force);
+
+  return slice;
 }
 
 function clearTimer() {
@@ -73,67 +78,26 @@ function clearTimer() {
 }
 
 // ===============================
-// INDICADOR (STEALTH)
-// - só mostra a CARTA após o swipe (sem verde / sem setas)
-// - mais pra baixo (ajuste no "top")
+// INDICADOR STEALTH
 // ===============================
 let indicatorTimeout = null;
-let indicatorStyled = false;
-
-function styleIndicatorOnce() {
-  if (indicatorStyled || !indicator) return;
-  indicatorStyled = true;
-
-  Object.assign(indicator.style, {
-    position: "fixed",
-    right: "10px",
-    left: "auto",
-    top: "98%",                 // <-- ajuste fino aqui (mais baixo = número maior)
-    transform: "translateY(-50%)",
-    zIndex: "9999",
-    background: "transparent",
-    border: "0",
-    boxShadow: "none",
-    padding: "0",
-    margin: "0",
-    borderRadius: "0",
-    color: "rgba(255,255,255,0.50)",
-    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
-    fontSize: "14px",
-    fontWeight: "700",
-    letterSpacing: "0.2px",
-    textShadow: "0 2px 12px rgba(0,0,0,0.75)",
-    pointerEvents: "none",
-    opacity: "0",
-    transition: "opacity 0.12s ease",
-    userSelect: "none",
-    WebkitUserSelect: "none",
-  });
-
-  indicator.classList.remove("show", "ok", "bad");
-  indicator.textContent = "";
-}
 
 function showIndicatorStealth(text) {
   if (!indicator) return;
-  styleIndicatorOnce();
-
-  if (indicatorTimeout) clearTimeout(indicatorTimeout);
   indicator.textContent = text;
   indicator.style.opacity = "1";
 
+  clearTimeout(indicatorTimeout);
   indicatorTimeout = setTimeout(() => {
     indicator.style.opacity = "0";
   }, 420);
 }
 
 // ===============================
-// BOTÃO "TENTAR DE NOVO" (via JS)
+// BOTÃO "TENTAR DE NOVO"
 // ===============================
 const retryBtn = document.createElement("button");
-retryBtn.type = "button";
 retryBtn.textContent = "Tentar de novo";
-retryBtn.setAttribute("aria-label", "Tentar de novo");
 
 Object.assign(retryBtn.style, {
   position: "absolute",
@@ -145,19 +109,11 @@ Object.assign(retryBtn.style, {
   border: "1px solid rgba(255,255,255,0.16)",
   background: "rgba(0,0,0,0.55)",
   color: "rgba(255,255,255,0.92)",
-  fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
   fontSize: "15px",
-  letterSpacing: "0.2px",
-  backdropFilter: "blur(8px)",
-  WebkitBackdropFilter: "blur(8px)",
-  boxShadow: "0 14px 36px rgba(0,0,0,0.55)",
   opacity: "0",
   display: "none",
   transition: "opacity 0.18s ease",
-  zIndex: "10",
-  touchAction: "manipulation",
-  userSelect: "none",
-  WebkitUserSelect: "none",
+  zIndex: "10"
 });
 
 deckEl.appendChild(retryBtn);
@@ -165,29 +121,21 @@ deckEl.appendChild(retryBtn);
 function showRetryOnly() {
   awaitingRetry = true;
   cardImg.style.opacity = "0";
-
   retryBtn.style.display = "block";
-  requestAnimationFrame(() => {
-    retryBtn.style.opacity = "1";
-  });
+  requestAnimationFrame(() => retryBtn.style.opacity = "1");
 }
 
 function hideRetryAndShowAceOnly() {
   awaitingRetry = false;
-
   retryBtn.style.opacity = "0";
-  setTimeout(() => {
-    retryBtn.style.display = "none";
-  }, 200);
+  setTimeout(() => retryBtn.style.display = "none", 200);
 
   cardImg.src = "cards/as.png";
   cardImg.style.opacity = "1";
-  cardImg.style.transform = "translateY(-6px)";
 }
 
-// IMPORTANTE: NÃO inicia automaticamente.
-// Clicou "Tentar de novo" => volta pro Ás e espera toque no Ás.
 let suppressClickUntil = 0;
+
 retryBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   suppressClickUntil = Date.now() + 450;
@@ -195,169 +143,108 @@ retryBtn.addEventListener("click", (e) => {
 });
 
 // ===============================
-// ANIMAÇÃO DO BARALHO
-// - sem pausa no force (force só existe no final)
+// ANIMAÇÃO DO BARALHO (FLUIDA)
 // ===============================
 function runDeck() {
   if (!running) return;
 
   if (index >= sequence.length) {
     running = false;
-    clearTimer();
     showRetryOnly();
     return;
   }
 
   const currentCard = sequence[index];
 
-  // movimento "pra baixo"
-  cardImg.style.transform = "translateY(22px)";
+  cardImg.style.transform = "translateY(14px)";
+  cardImg.style.opacity = "0";
 
   clearTimer();
   timer = setTimeout(() => {
-    // mostra carta
     cardImg.src = `cards/${currentCard}.png`;
-    cardImg.style.transform = "translateY(-6px)";
+
+    requestAnimationFrame(() => {
+      cardImg.style.transform = "translateY(0)";
+      cardImg.style.opacity = "1";
+    });
+
     index++;
 
-    // se acabou de mostrar a última carta (que é o force): some rápido -> "Tentar de novo"
     if (index >= sequence.length) {
       running = false;
-      clearTimer();
       setTimeout(showRetryOnly, LAST_CARD_EXIT_DELAY);
       return;
     }
 
-    // próximo passo (normal)
     const delay = (index > sequence.length * 0.65) ? SPEED_END : SPEED_START;
     timer = setTimeout(runDeck, delay);
-  }, 20);
+  }, 40);
 }
 
 function startDeck() {
-  if (running) return;
-  if (awaitingRetry) return;
+  if (running || awaitingRetry) return;
 
-  clearTimer();
   running = true;
   index = 0;
 
-  // decide a carta forçada desta rodada
   if (forcedRunsLeft > 0 && forcedOverride) {
     forceThisRun = forcedOverride;
     forcedRunsLeft--;
-    if (forcedRunsLeft === 0) forcedOverride = null; // volta ao aleatório
+    if (forcedRunsLeft === 0) forcedOverride = null;
   } else {
     forceThisRun = getRandomCard();
   }
 
-  cardImg.style.opacity = "1";
-  cardImg.style.transform = "translateY(-6px)";
   cardImg.src = "cards/as.png";
+  cardImg.style.opacity = "1";
 
-  // sequência com force SOMENTE no final
   sequence = prepareDeck(forceThisRun);
-  timer = setTimeout(runDeck, 140);
+  timer = setTimeout(runDeck, 120);
 }
 
 // ===============================
-// SWIPE INPUT (3 gestos)
-// - swipe NÃO inicia o baralho
-// - após 3 swipes: confirma stealth (só carta) e seta force por 2 rodadas
-// - toque no ÁS inicia
+// SWIPE INPUT
 // ===============================
 const SWIPE_MIN = 42;
-
 let sx = 0, sy = 0;
-let touchStartTarget = null;
 let swipeBuffer = [];
 
-function prettyCard(code) {
-  const v = code.slice(0, -1);
-  const s = code.slice(-1);
-
-  const value = (v === "a") ? "A" :
-                (v === "x") ? "10" :
-                (v === "j") ? "J" :
-                (v === "q") ? "Q" :
-                (v === "k") ? "K" : v;
-
-  const suit = (s === "s") ? "♠" :
-               (s === "h") ? "♥" :
-               (s === "c") ? "♣" : "♦";
-
-  return `${value}${suit}`;
-}
-
-function decodeSwipe([a, b, c]) {
+function decodeSwipe([a,b,c]) {
   const valueMap = {
-    "UR":"a",
-    "RU":"2",
-    "RR":"3",
-    "RD":"4",
-    "DR":"5",
-    "DD":"6",
-    "DL":"7",
-    "LD":"8",
-    "LL":"9",
-    "LU":"x",
-    "UL":"j",
-    "UU":"q",
-    "UD":"k"
+    "UR":"a","RU":"2","RR":"3","RD":"4","DR":"5","DD":"6",
+    "DL":"7","LD":"8","LL":"9","LU":"x","UL":"j","UU":"q","UD":"k"
   };
-
-  const suitMap = {
-    "U":"s",
-    "R":"h",
-    "D":"c",
-    "L":"d"
-  };
-
-  const value = valueMap[a + b];
-  const suit = suitMap[c];
-  if (!value || !suit) return null;
-  return value + suit;
+  const suitMap = { "U":"s","R":"h","D":"c","L":"d" };
+  return valueMap[a+b] && suitMap[c]
+    ? valueMap[a+b] + suitMap[c]
+    : null;
 }
 
-document.addEventListener("touchstart", (e) => {
-  if (running) return;
-  if (awaitingRetry) return;
-
+document.addEventListener("touchstart", e => {
+  if (running || awaitingRetry) return;
   sx = e.touches[0].clientX;
   sy = e.touches[0].clientY;
-  touchStartTarget = e.target;
-}, { passive: true });
+}, { passive:true });
 
-document.addEventListener("touchend", (e) => {
-  if (running) return;
-  if (awaitingRetry) return;
+document.addEventListener("touchend", e => {
+  if (running || awaitingRetry) return;
 
-  const ex = e.changedTouches[0].clientX;
-  const ey = e.changedTouches[0].clientY;
+  const dx = e.changedTouches[0].clientX - sx;
+  const dy = e.changedTouches[0].clientY - sy;
 
-  const dx = ex - sx;
-  const dy = ey - sy;
-
-  const absX = Math.abs(dx);
-  const absY = Math.abs(dy);
-
-  const isSwipe = (absX >= SWIPE_MIN || absY >= SWIPE_MIN);
-
-  if (isSwipe) {
-    let dir;
-    if (absX > absY) dir = dx > 0 ? "R" : "L";
-    else dir = dy > 0 ? "D" : "U";
-
-    swipeBuffer.push(dir);
+  if (Math.abs(dx) >= SWIPE_MIN || Math.abs(dy) >= SWIPE_MIN) {
+    swipeBuffer.push(Math.abs(dx) > Math.abs(dy)
+      ? dx > 0 ? "R" : "L"
+      : dy > 0 ? "D" : "U"
+    );
 
     if (swipeBuffer.length === 3) {
       const card = decodeSwipe(swipeBuffer);
       swipeBuffer = [];
-
       if (card) {
         forcedOverride = card;
         forcedRunsLeft = 2;
-        showIndicatorStealth(prettyCard(card));
+        showIndicatorStealth(card.toUpperCase());
       }
     }
 
@@ -365,24 +252,11 @@ document.addEventListener("touchend", (e) => {
     return;
   }
 
-  // TAP: exige tocar NO ÁS (imagem)
-  const now = Date.now();
-  if (now < suppressClickUntil) return;
-
-  if (touchStartTarget === cardImg) {
-    suppressClickUntil = Date.now() + 450;
-    startDeck();
-  }
-}, { passive: true });
-
-// Desktop: click no ÁS inicia
-deckEl.addEventListener("click", (e) => {
-  const now = Date.now();
-  if (now < suppressClickUntil) return;
-  if (awaitingRetry) return;
-  if (e.target === cardImg) startDeck();
+  if (Date.now() < suppressClickUntil) return;
+  startDeck();
 });
 
-
-
-
+deckEl.addEventListener("click", () => {
+  if (Date.now() < suppressClickUntil) return;
+  if (!awaitingRetry) startDeck();
+});
