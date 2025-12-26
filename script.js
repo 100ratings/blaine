@@ -20,27 +20,28 @@ const indicator = document.getElementById("swipe-indicator");
 // ===============================
 let forcedOverride = null;
 let forcedRunsLeft = 0;
-let forceThisRun = null;
 
 // ===============================
-// ANIMAÇÃO (queda pra frente)
+// ANIMAÇÃO (cai pra frente)
 // ===============================
-const EDGE_T = "translateY(-6px) translateX(14px) rotateY(86deg)";
-const FACE_T = "translateY(-6px) translateX(0px) rotateY(0deg)";
+// 0deg = face reta; ~78deg = quase “em pé”, parece caindo pra frente
+const EDGE_T = "translateY(-6px) rotateX(78deg)";
+const FACE_T = "translateY(-6px) rotateX(0deg)";
 
-const CLOSE_DUR = 70;      // fecha pra “borda”
-const OPEN_DUR = 140;      // abre mostrando face
-const OPEN_DUR_FORCE = 220; // abre mais gostoso no force
+const CLOSE_DUR = 70;       // fechar (voltar pra inclinado)
+const OPEN_DUR  = 140;      // cair pra frente
+const OPEN_DUR_FORCE = 220; // cair mais gostoso no force
 
-const BASE_DELAY = 170;    // ritmo normal
-const END_DELAY  = 120;    // acelera no final
-const FORCE_DELAY = 520;   // pausa do force
+const BASE_DELAY  = 170;    // ritmo normal
+const END_DELAY   = 120;    // acelera no final
+const FORCE_DELAY = 520;    // pausa no force
 
 // ===============================
 let sequence = [];
 let index = 0;
 let running = false;
 let timer = null;
+let forceThisRun = null;
 
 // ===============================
 // PRÉ-CARREGAMENTO (evita travada inicial)
@@ -55,6 +56,16 @@ function getRandomCard() {
   return deck[Math.floor(Math.random() * deck.length)];
 }
 
+function pickForceForRun() {
+  if (forcedRunsLeft > 0 && forcedOverride) {
+    const c = forcedOverride;
+    forcedRunsLeft--;
+    if (forcedRunsLeft === 0) forcedOverride = null;
+    return c;
+  }
+  return getRandomCard();
+}
+
 function prepareDeck(force) {
   const temp = deck.filter(c => c !== force);
   const middle = Math.floor(temp.length / 2);
@@ -63,10 +74,7 @@ function prepareDeck(force) {
 }
 
 function clearTimer() {
-  if (timer) {
-    clearTimeout(timer);
-    timer = null;
-  }
+  if (timer) { clearTimeout(timer); timer = null; }
 }
 
 // ===============================
@@ -87,37 +95,28 @@ function showIndicator(text, ok = true) {
 }
 
 // ===============================
-// ANIMAÇÃO POR CARTA: fecha → troca → abre
+// ANIMAÇÃO POR CARTA: inclina → troca → cai pra frente
 // ===============================
 function animateToCard(cardCode, isForceStep) {
-  // fecha (vira de lado, “some”)
   cardImg.style.setProperty("--dur", `${CLOSE_DUR}ms`);
   cardImg.style.transform = EDGE_T;
 
   setTimeout(() => {
-    // troca enquanto está “de lado”
     cardImg.src = `cards/${cardCode}.png`;
 
-    // abre (cai pra frente)
     const open = isForceStep ? OPEN_DUR_FORCE : OPEN_DUR;
     cardImg.style.setProperty("--dur", `${open}ms`);
     cardImg.style.transform = FACE_T;
   }, CLOSE_DUR);
 }
 
-// ===============================
 // FINAL: fecha pra não entregar a última, troca pra A♠, abre
-// ===============================
 function resetToAce() {
-  // fecha
   cardImg.style.setProperty("--dur", `${CLOSE_DUR}ms`);
   cardImg.style.transform = EDGE_T;
 
   setTimeout(() => {
-    // troca escondido
     cardImg.src = "cards/as.png";
-
-    // abre mostrando A♠ novamente
     cardImg.style.setProperty("--dur", `${OPEN_DUR}ms`);
     cardImg.style.transform = FACE_T;
   }, CLOSE_DUR);
@@ -144,14 +143,12 @@ function runDeck() {
   if (isForceStep) delay = FORCE_DELAY;
   else if (index > sequence.length * 0.65) delay = END_DELAY;
 
-  // garante que não atropela close+open
-  const minDelay = CLOSE_DUR + (isForceStep ? OPEN_DUR_FORCE : OPEN_DUR) + 12;
+  const minDelay = CLOSE_DUR + (isForceStep ? OPEN_DUR_FORCE : OPEN_DUR) + 18;
   delay = Math.max(delay, minDelay);
 
   timer = setTimeout(runDeck, delay);
 }
 
-// ===============================
 function startDeck() {
   if (running) return;
 
@@ -159,19 +156,10 @@ function startDeck() {
   running = true;
   index = 0;
 
-  // decide a carta forçada desta rodada
-  if (forcedRunsLeft > 0 && forcedOverride) {
-    forceThisRun = forcedOverride;
-    forcedRunsLeft--;
-    if (forcedRunsLeft === 0) forcedOverride = null;
-  } else {
-    forceThisRun = getRandomCard();
-  }
-
-  // prepara sequência com a carta “parada” no meio
+  forceThisRun = pickForceForRun();
   sequence = prepareDeck(forceThisRun);
 
-  // começa: fecha e já entra na primeira carta (evita “pulo”)
+  // entra “inclinado” antes de começar
   cardImg.style.setProperty("--dur", `${CLOSE_DUR}ms`);
   cardImg.style.transform = EDGE_T;
 
@@ -179,7 +167,7 @@ function startDeck() {
 }
 
 // ===============================
-// SWIPE INPUT (3 gestos) — NÃO inicia o baralho
+// SWIPE INPUT (3 gestos) — NÃO inicia
 // TAP no baralho inicia
 // ===============================
 const SWIPE_MIN = 42;
@@ -187,7 +175,6 @@ const SWIPE_MIN = 42;
 let sx = 0, sy = 0;
 let touchStartTarget = null;
 let suppressClickUntil = 0;
-
 let swipeBuffer = [];
 
 function dirToArrow(d) {
@@ -212,7 +199,6 @@ function prettyCard(code) {
 }
 
 function decodeSwipe([a, b, c]) {
-  // 2 swipes = valor; 3º swipe = naipe
   const valueMap = {
     "UR":"a",
     "RU":"2",
@@ -244,7 +230,6 @@ function decodeSwipe([a, b, c]) {
 
 document.addEventListener("touchstart", (e) => {
   if (running) return;
-
   sx = e.touches[0].clientX;
   sy = e.touches[0].clientY;
   touchStartTarget = e.target;
