@@ -14,45 +14,30 @@ const cardImg = document.getElementById("card");
 const indicator = document.getElementById("swipe-indicator");
 const tryAgain = document.getElementById("try-again");
 
-// wrap do texto pra animar
-tryAgain.innerHTML = `<span>${tryAgain.textContent}</span>`;
-
 // ===============================
 // FORCE STATE
-// - padrão: aleatório toda rodada
+// - por padrão: aleatório toda rodada
 // - após swipe: força por 2 rodadas
 // ===============================
 let forcedOverride = null;
 let forcedRunsLeft = 0;
+let forceThisRun = null;
 
 // ===============================
-// ANIMAÇÃO (opção 1: leve + rápida)
+// SPEED (mantém seu “flick” atual)
 // ===============================
-// normal (não-force)
-const DOWN_T = "translateY(16px) translateX(0px) scale(0.985)";
-const UP_T   = "translateY(-6px) translateX(0px) scale(1)";
-
-// FORCE: “peek” mais pra direita
-const UP_T_FORCE = "translateY(-6px) translateX(18px) scale(1)";
-
-const DOWN_DUR = 48;
-const UP_DUR   = 58;
-
-const BASE_DELAY = 92;       // mais rápido / fluido
-const END_DELAY  = 78;       // final ainda mais rápido
-const FORCE_PAUSE = 520;     // seu peek já estava ótimo
-
-// sumir / tentar de novo / restart
-const VANISH_DUR = 140;
-const TRY_AGAIN_HOLD = 680;
-const RESTART_GAP = 120;
+const SPEED_START = 60;
+const SPEED_FORCE = 420;
+const SPEED_END   = 30;
 
 // ===============================
 let sequence = [];
 let index = 0;
 let running = false;
-let timer = null;
-let forceThisRun = null;
+let awaitingRetry = false;
+
+let swapTimer = null;
+let nextTimer = null;
 
 // ===============================
 // PRÉ-CARREGAMENTO (evita travada inicial)
@@ -67,42 +52,22 @@ function getRandomCard() {
   return deck[Math.floor(Math.random() * deck.length)];
 }
 
-function pickForceForRun() {
-  if (forcedRunsLeft > 0 && forcedOverride) {
-    const c = forcedOverride;
-    forcedRunsLeft--;
-    if (forcedRunsLeft === 0) forcedOverride = null;
-    return c;
-  }
-  return getRandomCard();
-}
-
 function prepareDeck(force) {
-  const temp = deck.filter(c => c !== force);
-  const middle = Math.floor(temp.length / 2);
+  let temp = deck.filter(c => c !== force);
+  let middle = Math.floor(temp.length / 2);
   temp.splice(middle, 0, force);
   return temp;
 }
 
-function clearTimer() {
-  if (timer) { clearTimeout(timer); timer = null; }
+function clearTimers() {
+  if (swapTimer) { clearTimeout(swapTimer); swapTimer = null; }
+  if (nextTimer) { clearTimeout(nextTimer); nextTimer = null; }
 }
 
 // ===============================
-// INDICADOR (só a carta, bem sutil)
+// INDICADOR (sutil, só a carta)
 // ===============================
 let indicatorTimeout = null;
-
-function showCardIndicator(cardPretty) {
-  if (indicatorTimeout) clearTimeout(indicatorTimeout);
-
-  indicator.textContent = cardPretty;
-  indicator.classList.add("show");
-
-  indicatorTimeout = setTimeout(() => {
-    indicator.classList.remove("show");
-  }, 520);
-}
 
 function prettyCard(code) {
   const v = code.slice(0, -1);
@@ -121,117 +86,133 @@ function prettyCard(code) {
   return `${value}${suit}`;
 }
 
-// ===============================
-// ANIMAÇÃO POR CARTA: desce → troca → sobe
-// (troca no pico do movimento)
-// ===============================
-function animateToCard(cardCode, isForceStep) {
-  // desce
-  cardImg.style.transition = `transform ${DOWN_DUR}ms linear, opacity 120ms linear`;
-  cardImg.style.transform = DOWN_T;
+function showCardIndicator(text) {
+  if (indicatorTimeout) clearTimeout(indicatorTimeout);
 
-  setTimeout(() => {
-    // troca no pico
-    cardImg.src = `cards/${cardCode}.png`;
+  indicator.textContent = text;
+  indicator.classList.add("show");
 
-    // sobe (force sobe “pra direita”)
-    const upT = isForceStep ? UP_T_FORCE : UP_T;
-    cardImg.style.transition = `transform ${UP_DUR}ms cubic-bezier(.22,.61,.36,1), opacity 120ms linear`;
-    cardImg.style.transform = upT;
-  }, DOWN_DUR);
+  indicatorTimeout = setTimeout(() => {
+    indicator.classList.remove("show");
+  }, 520);
 }
 
 // ===============================
-// FIM: some cartas → “tentar de novo” → A♠ aparece e já começa sozinho
+// TRY AGAIN
 // ===============================
-function endSequenceAndRestart() {
-  running = false;
-  clearTimer();
-
-  // some a carta (pra não “inspecionar” a última)
-  cardImg.style.transition = `opacity ${VANISH_DUR}ms ease, transform ${VANISH_DUR}ms ease`;
-  cardImg.style.opacity = "0";
-  cardImg.style.transform = "translateY(10px) translateX(0px) scale(0.98)";
-
-  setTimeout(() => {
-    // mostra “tentar de novo”
-    tryAgain.classList.add("show");
-
-    setTimeout(() => {
-      tryAgain.classList.remove("show");
-
-      // reseta pra A♠ invisível e volta
-      cardImg.src = "cards/as.png";
-      cardImg.style.transition = `opacity 160ms ease, transform ${UP_DUR}ms cubic-bezier(.22,.61,.36,1)`;
-      cardImg.style.opacity = "1";
-      cardImg.style.transform = UP_T;
-
-      // recomeça sozinho (sem clicar)
-      setTimeout(() => {
-        startDeck(true);
-      }, RESTART_GAP);
-    }, TRY_AGAIN_HOLD);
-  }, VANISH_DUR + 30);
+function showTryAgain() {
+  awaitingRetry = true;
+  tryAgain.classList.remove("hidden");
 }
 
+function hideTryAgain() {
+  awaitingRetry = false;
+  tryAgain.classList.add("hidden");
+}
+
+// ===============================
+// ANIMAÇÃO DO BARALHO (mantida)
+// - force: “peek” levemente pra direita
+// - último passo: NÃO mostra a última carta (só some)
 // ===============================
 function runDeck() {
   if (!running) return;
 
+  // se chegou no fim (segurança)
   if (index >= sequence.length) {
-    endSequenceAndRestart();
+    running = false;
+    clearTimers();
+    cardImg.style.opacity = 0;
+    showTryAgain();
     return;
   }
 
+  const isLastStep = (index === sequence.length - 1);
   const currentCard = sequence[index];
-  const isForceStep = (currentCard === forceThisRun);
 
-  animateToCard(currentCard, isForceStep);
-  index++;
+  // “queda”
+  cardImg.style.transform = "translateY(22px) translateX(0px)";
 
-  // delay com leve variação (fica mais orgânico e “fluido”)
-  let delay = BASE_DELAY + Math.random() * 14;
+  if (isLastStep) {
+    // não troca pro último frame — só some
+    swapTimer = setTimeout(() => {
+      cardImg.style.opacity = 0;
+    }, 20);
 
-  if (isForceStep) {
-    delay = FORCE_PAUSE;
-  } else if (index > sequence.length * 0.65) {
-    delay = END_DELAY + Math.random() * 10;
+    running = false;
+    clearTimers();
+
+    nextTimer = setTimeout(() => {
+      showTryAgain();
+    }, 160);
+
+    return;
   }
 
-  // garante que não atropela a animação
-  const minDelay = DOWN_DUR + UP_DUR + 10;
-  delay = Math.max(delay, minDelay);
+  // troca normal
+  swapTimer = setTimeout(() => {
+    cardImg.src = `cards/${currentCard}.png`;
 
-  timer = setTimeout(runDeck, delay);
+    // volta pro topo — com “peek” na carta forçada
+    if (currentCard === forceThisRun) {
+      cardImg.style.transform = "translateY(-6px) translateX(18px)";
+    } else {
+      cardImg.style.transform = "translateY(-6px) translateX(0px)";
+    }
+
+    cardImg.style.opacity = 1;
+    index++;
+  }, 20);
+
+  let delay = SPEED_START;
+
+  if (currentCard === forceThisRun) {
+    delay = SPEED_FORCE;
+  } else if (index > sequence.length * 0.65) {
+    delay = SPEED_END;
+  }
+
+  nextTimer = setTimeout(runDeck, delay);
 }
 
-function startDeck(fromAutoRestart = false) {
+function startDeck() {
   if (running) return;
+  if (awaitingRetry) return;
 
-  clearTimer();
+  clearTimers();
   running = true;
   index = 0;
 
-  forceThisRun = pickForceForRun();
+  // decide a carta forçada desta rodada
+  if (forcedRunsLeft > 0 && forcedOverride) {
+    forceThisRun = forcedOverride;
+    forcedRunsLeft--;
+    if (forcedRunsLeft === 0) {
+      forcedOverride = null; // volta ao aleatório depois de 2 rodadas
+    }
+  } else {
+    forceThisRun = getRandomCard();
+  }
+
+  cardImg.style.opacity = 1;
+  cardImg.style.transform = "translateY(-6px) translateX(0px)";
+  cardImg.src = "cards/as.png";
+
   sequence = prepareDeck(forceThisRun);
-
-  // estado inicial: carta visível e “assentada”
-  cardImg.style.opacity = "1";
-  cardImg.style.transition = `transform ${UP_DUR}ms cubic-bezier(.22,.61,.36,1), opacity 120ms linear`;
-  cardImg.style.transform = UP_T;
-
-  timer = setTimeout(runDeck, fromAutoRestart ? 120 : 90);
+  nextTimer = setTimeout(runDeck, 140);
 }
 
 // ===============================
-// SWIPE INPUT (3 gestos) — NÃO inicia
-// TAP no baralho inicia (só a primeira vez)
+// SWIPE INPUT (3 gestos) — mantém perfeito
+// - swipe NÃO inicia o baralho
+// - mostra só a CARTA (sutil)
 // ===============================
 const SWIPE_MIN = 42;
 
 let sx = 0, sy = 0;
 let touchStartTarget = null;
 let suppressClickUntil = 0;
+
 let swipeBuffer = [];
 
 function decodeSwipe([a, b, c]) {
@@ -251,16 +232,23 @@ function decodeSwipe([a, b, c]) {
     "UD":"k"
   };
 
-  const suitMap = { "U":"s", "R":"h", "D":"c", "L":"d" };
+  const suitMap = {
+    "U":"s",
+    "R":"h",
+    "D":"c",
+    "L":"d"
+  };
 
   const value = valueMap[a + b];
   const suit = suitMap[c];
+
   if (!value || !suit) return null;
   return value + suit;
 }
 
 document.addEventListener("touchstart", (e) => {
   if (running) return;
+
   sx = e.touches[0].clientX;
   sy = e.touches[0].clientY;
   touchStartTarget = e.target;
@@ -302,18 +290,54 @@ document.addEventListener("touchend", (e) => {
     return;
   }
 
-  // TAP: inicia só se tocou no baralho
-  if (Date.now() < suppressClickUntil) return;
+  // TAP (sem swipe)
+  const now = Date.now();
+  if (now < suppressClickUntil) return;
 
+  // se estiver em “tentar de novo”, só aceita clique no botão
+  if (awaitingRetry) {
+    if (tryAgain.contains(touchStartTarget)) {
+      hideTryAgain();
+
+      cardImg.src = "cards/as.png";
+      cardImg.style.opacity = 1;
+      cardImg.style.transform = "translateY(-6px) translateX(0px)";
+
+      suppressClickUntil = Date.now() + 350;
+      startDeck();
+    }
+    return;
+  }
+
+  // normal: inicia se tap no baralho
   const tappedDeck = deckEl.contains(touchStartTarget);
   if (tappedDeck) {
     suppressClickUntil = Date.now() + 450;
-    startDeck(false);
+    startDeck();
   }
 }, { passive: true });
 
-// Desktop: click no baralho inicia
+// Desktop clicks
 deckEl.addEventListener("click", () => {
-  if (Date.now() < suppressClickUntil) return;
-  startDeck(false);
+  const now = Date.now();
+  if (now < suppressClickUntil) return;
+  if (awaitingRetry) return;
+  startDeck();
 });
+
+tryAgain.addEventListener("click", () => {
+  if (!awaitingRetry) return;
+
+  hideTryAgain();
+
+  cardImg.src = "cards/as.png";
+  cardImg.style.opacity = 1;
+  cardImg.style.transform = "translateY(-6px) translateX(0px)";
+
+  suppressClickUntil = Date.now() + 250;
+  startDeck();
+});
+
+// estado inicial: não mostrar “tentar de novo”
+hideTryAgain();
+cardImg.style.opacity = 1;
