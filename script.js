@@ -24,7 +24,7 @@ let forceThisRun = null;
 
 // ===============================
 const SPEED_START = 60;
-const SPEED_FORCE = 420;
+const SPEED_FORCE = 2000; // segura ~2s na carta forçada (sem deslocar/fade)
 const SPEED_END   = 30;
 
 // ===============================
@@ -32,6 +32,11 @@ let sequence = [];
 let index = 0;
 let running = false;
 let timer = null;
+
+// ===============================
+// ESTADO "TENTAR DE NOVO"
+// ===============================
+let awaitingRetry = false;
 
 // ===============================
 // PRÉ-CARREGAMENTO (evita travada inicial)
@@ -78,21 +83,70 @@ function showIndicator(text, ok = true) {
 }
 
 // ===============================
-// HELPERS DE TRANSFORM (mantém a mesma animação)
+// BOTÃO "TENTAR DE NOVO" (via JS; sem mexer em HTML/CSS)
 // ===============================
-function setCardTransform(y, x = 0) {
-  // Mantém os mesmos valores de Y (-6 / 22), apenas adiciona X quando necessário (peek)
-  cardImg.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+const retryBtn = document.createElement("button");
+retryBtn.type = "button";
+retryBtn.textContent = "Tentar de novo";
+retryBtn.setAttribute("aria-label", "Tentar de novo");
+
+Object.assign(retryBtn.style, {
+  position: "absolute",
+  left: "50%",
+  top: "50%",
+  transform: "translate(-50%, -50%)",
+  padding: "14px 18px",
+  borderRadius: "14px",
+  border: "1px solid rgba(255,255,255,0.16)",
+  background: "rgba(0,0,0,0.55)",
+  color: "rgba(255,255,255,0.92)",
+  fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+  fontSize: "15px",
+  letterSpacing: "0.2px",
+  backdropFilter: "blur(8px)",
+  WebkitBackdropFilter: "blur(8px)",
+  boxShadow: "0 14px 36px rgba(0,0,0,0.55)",
+  opacity: "0",
+  display: "none",
+  transition: "opacity 0.18s ease",
+  zIndex: "10",
+  touchAction: "manipulation",
+  userSelect: "none",
+  WebkitUserSelect: "none",
+});
+
+deckEl.appendChild(retryBtn);
+
+function showRetryOnly() {
+  awaitingRetry = true;
+
+  // some “todas as cartas” (na prática: esconde a carta)
+  cardImg.style.opacity = 0;
+
+  retryBtn.style.display = "block";
+  requestAnimationFrame(() => {
+    retryBtn.style.opacity = "1";
+  });
 }
 
-// ===============================
-// PEEK (canônico): desloca levemente pra direita e some rápido
-// - não altera timing do baralho
-// - some e fica invisível até a próxima carta entrar
-// ===============================
-const PEEK_X = 18;        // leve deslocamento p/ direita
-const PEEK_HIDE_MS = 110; // some rápido
-let pendingPeekRestore = false;
+function hideRetryAndResetToAce() {
+  awaitingRetry = false;
+
+  retryBtn.style.opacity = "0";
+  setTimeout(() => {
+    retryBtn.style.display = "none";
+  }, 200);
+
+  cardImg.src = "cards/as.png";
+  cardImg.style.opacity = 1;
+  cardImg.style.transform = "translateY(-6px)";
+}
+
+retryBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  suppressClickUntil = Date.now() + 450;
+  hideRetryAndResetToAce();
+});
 
 // ===============================
 // ANIMAÇÃO DO BARALHO
@@ -104,10 +158,9 @@ function runDeck() {
     running = false;
     clearTimer();
 
+    // no final: some tudo e mostra só o botão, esperando toque
     setTimeout(() => {
-      cardImg.src = "cards/as.png";
-      cardImg.style.opacity = 1;
-      setCardTransform(-6, 0);
+      showRetryOnly();
     }, 120);
 
     return;
@@ -115,43 +168,18 @@ function runDeck() {
 
   const currentCard = sequence[index];
 
-  // movimento "pra baixo" (igual ao original)
-  setCardTransform(22, 0);
+  cardImg.style.transform = "translateY(22px)";
 
   timer = setTimeout(() => {
-    // Se o peek deixou invisível, só voltamos a opacidade no momento do swap
-    // (pra não “reaparecer” a carta forçada antes da próxima entrar)
-    if (pendingPeekRestore) {
-      cardImg.style.opacity = 1;
-      pendingPeekRestore = false;
-    }
-
     cardImg.src = `cards/${currentCard}.png`;
-
-    // settle (igual ao original), com exceção do peek na carta forçada
-    if (currentCard === forceThisRun) {
-      // desloca pra direita (peek)
-      setCardTransform(-6, PEEK_X);
-      cardImg.style.opacity = 1;
-
-      // some rapidamente
-      setTimeout(() => {
-        if (!running) return;
-        // some e fica invisível até o próximo swap
-        cardImg.style.opacity = 0;
-        pendingPeekRestore = true;
-      }, PEEK_HIDE_MS);
-    } else {
-      setCardTransform(-6, 0);
-    }
-
+    cardImg.style.transform = "translateY(-6px)";
     index++;
   }, 20);
 
   let delay = SPEED_START;
 
   if (currentCard === forceThisRun) {
-    delay = SPEED_FORCE;
+    delay = SPEED_FORCE; // pausa ~2s na carta forçada (sem efeito visual)
   } else if (index > sequence.length * 0.65) {
     delay = SPEED_END;
   }
@@ -161,6 +189,7 @@ function runDeck() {
 
 function startDeck() {
   if (running) return;
+  if (awaitingRetry) return;
 
   clearTimer();
   running = true;
@@ -177,10 +206,8 @@ function startDeck() {
     forceThisRun = getRandomCard();
   }
 
-  pendingPeekRestore = false;
-
   cardImg.style.opacity = 1;
-  setCardTransform(-6, 0);
+  cardImg.style.transform = "translateY(-6px)";
   cardImg.src = "cards/as.png";
 
   sequence = prepareDeck(forceThisRun);
@@ -200,8 +227,8 @@ let suppressClickUntil = 0;
 
 let swipeBuffer = [];
 
-function dirToArrow(d) {
-  return d === "U" ? "↑" : d === "R" ? "→" : d === "D" ? "↓" : "←";
+function resetSwipeBuffer() {
+  swipeBuffer = [];
 }
 
 function prettyCard(code) {
@@ -255,6 +282,7 @@ function decodeSwipe([a, b, c]) {
 
 document.addEventListener("touchstart", (e) => {
   if (running) return;
+  if (awaitingRetry) return;
 
   sx = e.touches[0].clientX;
   sy = e.touches[0].clientY;
@@ -263,6 +291,7 @@ document.addEventListener("touchstart", (e) => {
 
 document.addEventListener("touchend", (e) => {
   if (running) return;
+  if (awaitingRetry) return;
 
   const ex = e.changedTouches[0].clientX;
   const ey = e.changedTouches[0].clientY;
@@ -283,23 +312,22 @@ document.addEventListener("touchend", (e) => {
 
     swipeBuffer.push(dir);
 
-    // feedback parcial ajuda a validar
+    // feedback parcial (sutil; sem setas)
     if (swipeBuffer.length < 3) {
-      showIndicator(swipeBuffer.map(dirToArrow).join(" "), true);
+      showIndicator("•".repeat(swipeBuffer.length), true);
     }
 
     // no 3º swipe, decodifica
     if (swipeBuffer.length === 3) {
       const card = decodeSwipe(swipeBuffer);
-      const arrows = swipeBuffer.map(dirToArrow).join(" ");
-      swipeBuffer = [];
+      resetSwipeBuffer();
 
       if (card) {
         forcedOverride = card;
         forcedRunsLeft = 2;
-        showIndicator(`${arrows}  →  ${prettyCard(card)}`, true);
+        showIndicator(prettyCard(card), true); // só a carta, sem setas
       } else {
-        showIndicator(`${arrows}  →  inválido`, false);
+        showIndicator("inválido", false);
       }
     }
 
@@ -320,7 +348,7 @@ document.addEventListener("touchend", (e) => {
 }, { passive: true });
 
 // Desktop: click no baralho inicia
-deckEl.addEventListener("click", (e) => {
+deckEl.addEventListener("click", () => {
   const now = Date.now();
   if (now < suppressClickUntil) return;
   startDeck();
